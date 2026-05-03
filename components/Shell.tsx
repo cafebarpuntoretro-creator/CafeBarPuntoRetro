@@ -57,7 +57,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <button 
             onClick={async () => {
-              await supabase.auth.signOut();
+              await supabase?.auth.signOut();
               window.location.href = "/login";
             }}
             className="text-[10px] font-black text-primary-neon hover:text-white uppercase tracking-widest border-2 border-primary-neon px-3 py-2 bg-black arcade-shadow-cyan active:translate-y-1 transition-all"

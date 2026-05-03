@@ -262,9 +262,14 @@ export default function POSPage() {
 
     // 3. Update stock (safely with error check)
     for (const item of cart) {
-      const { error: stockError } = await supabase.rpc('decrement_stock', { x: item.qty, row_id: item.id });
+      const { error: stockError } = await supabase.rpc('decrement_stock', { 
+        row_id: item.id,
+        x: parseInt(item.qty.toString()) 
+      });
+      
       if (stockError) {
-        console.error("Error de stock en " + item.name + ":", stockError);
+        alert("Error al descontar stock de " + item.name + ": " + stockError.message);
+        console.error(stockError);
       }
     }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from 'motion/react';
 import { 
   LayoutDashboard, 
   ReceiptText, 

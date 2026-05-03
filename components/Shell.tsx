@@ -5,8 +5,7 @@ import {
   LayoutDashboard, 
   ReceiptText, 
   Boxes, 
-  UtensilsCrossed, 
-  Gamepad2, 
+  BarChart,
   Settings, 
   Bell, 
   User
@@ -77,8 +76,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarItem icon={LayoutDashboard} label="TABLERO" href="/" active={pathname === "/"} />
           <SidebarItem icon={Boxes} label="INVENTARIO" href="/inventory" active={pathname === "/inventory"} />
           <SidebarItem icon={ReceiptText} label="NUEVA VENTA" href="/pos" active={pathname === "/pos"} />
-          <SidebarItem icon={UtensilsCrossed} label="MENÚ" href="#" active={false} />
-          <SidebarItem icon={Gamepad2} label="PERSONAL" href="#" active={false} />
+          <SidebarItem icon={BarChart} label="ESTADÍSTICAS" href="/stats" active={pathname === "/stats"} />
           <SidebarItem icon={Settings} label="SISTEMA" href="#" active={false} />
         </nav>
       </aside>

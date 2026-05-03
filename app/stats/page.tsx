@@ -16,6 +16,10 @@ import {
 import Shell from "@/components/Shell";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { format } from "date-fns";
 import { 
   BarChart, 
   Bar, 
@@ -58,6 +62,76 @@ export default function StatsPage() {
     fetchStats();
   }, []);
 
+  const [selectedDay, setSelectedDay] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const generateMembrete = (doc: jsPDF, title: string) => {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.setTextColor(255, 0, 127);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bolditalic");
+    doc.text("PUNTO RETRO", 15, 25);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("CAFE BAR & POS SYSTEM - REPORTES", 15, 32);
+    doc.text([
+      "NIT: 123.456.789-0",
+      "Calle 123 # 45 - 67",
+      "Tel: +57 300 000 0000"
+    ], pageWidth - 15, 15, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(title, 15, 55);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 15, 62);
+  };
+
+  const exportPDF = (title: string, head: string[][], body: any[][], filename: string) => {
+    const doc = new jsPDF();
+    generateMembrete(doc, title);
+    autoTable(doc, {
+      startY: 75,
+      head: head,
+      body: body,
+      theme: 'striped',
+      headStyles: { fillColor: [255, 0, 127] }
+    });
+    doc.save(`${filename}.pdf`);
+  };
+
+  const exportExcel = (data: any[], filename: string) => {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+  };
+
+  const fetchDailyReport = async () => {
+    if (!supabase) return;
+    const start = new Date(selectedDay);
+    start.setHours(0,0,0,0);
+    const end = new Date(selectedDay);
+    end.setHours(23,59,59,999);
+
+    const { data: sales } = await supabase
+      .from("sales")
+      .select("id, total, payment_method, created_at")
+      .gte("created_at", start.toISOString())
+      .lte("created_at", end.toISOString());
+    
+    if (!sales || sales.length === 0) {
+      alert("No hay ventas registradas para este día.");
+      return;
+    }
+
+    const body = sales.map(s => [s.id.slice(0,8), format(new Date(s.created_at), 'HH:mm'), s.payment_method, `$${Number(s.total).toLocaleString()}`]);
+    exportPDF(`REPORTE DIARIO - ${selectedDay}`, [['ID Venta', 'Hora', 'Método', 'Total']], body, `Ventas_${selectedDay}`);
+  };
+
   const fetchStats = async () => {
     if (!supabase) return;
     setLoading(true);
@@ -66,21 +140,17 @@ export default function StatsPage() {
     const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const firstDayYear = new Date(now.getFullYear(), 0, 1).toISOString();
 
-    // 1. Fetch sales for the current year
     const { data: yearSales } = await supabase
       .from("sales")
       .select("total, created_at")
       .gte("created_at", firstDayYear);
 
-    // 2. Fetch sale items for top/bottom products
     const { data: items } = await supabase
       .from("sale_items")
       .select("quantity, products(name)")
       .gte("created_at", firstDayMonth);
 
-    // PROCESS DATA
     if (yearSales) {
-      // Annual Balance
       const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
       const annualMap = months.map(m => ({ month: m, total: 0 }));
       let monthTotal = 0;
@@ -95,7 +165,6 @@ export default function StatsPage() {
       setAnnualSales(annualMap);
       setTotals(prev => ({ ...prev, year: yearTotal, month: monthTotal, orders: yearSales.length }));
 
-      // Daily Sales for Current Month
       const dailyMap: { [key: string]: number } = {};
       yearSales.filter(s => new Date(s.created_at).getMonth() === now.getMonth()).forEach(s => {
         const day = new Date(s.created_at).getDate().toString();
@@ -111,7 +180,6 @@ export default function StatsPage() {
     if (items) {
       const prodMap: { [key: string]: number } = {};
       items.forEach((i: any) => {
-        // Handle case where products might be an array or object
         const productData = Array.isArray(i.products) ? i.products[0] : i.products;
         const name = productData?.name || "Desconocido";
         prodMap[name] = (prodMap[name] || 0) + Number(i.quantity);
@@ -152,9 +220,30 @@ export default function StatsPage() {
 
   return (
     <Shell>
-      <header className="mb-8">
-        <h1 className="text-primary-neon font-black text-4xl italic uppercase tracking-tighter">Panel de Inteligencia</h1>
-        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Auditoría y Rendimiento {new Date().getFullYear()}</p>
+      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-primary-neon font-black text-4xl italic uppercase tracking-tighter">Panel de Inteligencia</h1>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Auditoría y Rendimiento {new Date().getFullYear()}</p>
+        </div>
+        
+        {/* Generador de Reporte Diario */}
+        <div className="bg-neutral-900 border-2 border-neutral-800 p-4 flex items-center gap-4 arcade-shadow-cyan">
+          <div className="flex flex-col">
+            <label className="text-[8px] font-black text-secondary-neon uppercase mb-1">Reporte por Día</label>
+            <input 
+              type="date" 
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="bg-black border border-neutral-700 text-xs text-white p-1 outline-none focus:border-secondary-neon"
+            />
+          </div>
+          <button 
+            onClick={fetchDailyReport}
+            className="bg-secondary-neon text-black font-black text-[10px] px-4 py-2 uppercase hover:scale-105 transition-transform"
+          >
+            Descargar PDF
+          </button>
+        </div>
       </header>
 
       {/* Tarjetas de Resumen */}
@@ -190,9 +279,25 @@ export default function StatsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Gráfico Mensual */}
         <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-cyan">
-          <h3 className="text-[10px] font-black uppercase text-primary-neon mb-6 flex items-center gap-2">
-            <Calendar size={14} /> Rendimiento Diario (Mes Actual)
-          </h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-[10px] font-black uppercase text-primary-neon flex items-center gap-2">
+              <Calendar size={14} /> Rendimiento Diario (Mes)
+            </h3>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => exportPDF("REPORTE MENSUAL", [['Día', 'Total Venta']], monthlySales.map(m => [m.day, `$${m.total.toLocaleString()}`]), "Ventas_Mensuales")}
+                className="text-[8px] font-black text-primary-neon border border-primary-neon px-2 py-1 uppercase hover:bg-primary-neon hover:text-black transition-all"
+              >
+                PDF
+              </button>
+              <button 
+                onClick={() => exportExcel(monthlySales, "Ventas_Mensuales")}
+                className="text-[8px] font-black text-green-500 border border-green-500 px-2 py-1 uppercase hover:bg-green-500 hover:text-black transition-all"
+              >
+                Excel
+              </button>
+            </div>
+          </div>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlySales}>
@@ -215,9 +320,25 @@ export default function StatsPage() {
 
         {/* Gráfico Anual */}
         <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-pink">
-          <h3 className="text-[10px] font-black uppercase text-secondary-neon mb-6 flex items-center gap-2">
-            <BarChartIcon size={14} /> Comparativa Mensual (Balance Anual)
-          </h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-[10px] font-black uppercase text-secondary-neon flex items-center gap-2">
+              <BarChartIcon size={14} /> Balance Mensual (Año)
+            </h3>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => exportPDF("BALANCE ANUAL", [['Mes', 'Total Venta']], annualSales.map(m => [m.month, `$${m.total.toLocaleString()}`]), "Balance_Anual")}
+                className="text-[8px] font-black text-secondary-neon border border-secondary-neon px-2 py-1 uppercase hover:bg-secondary-neon hover:text-black transition-all"
+              >
+                PDF
+              </button>
+              <button 
+                onClick={() => exportExcel(annualSales, "Balance_Anual")}
+                className="text-[8px] font-black text-green-500 border border-green-500 px-2 py-1 uppercase hover:bg-green-500 hover:text-black transition-all"
+              >
+                Excel
+              </button>
+            </div>
+          </div>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={annualSales}>
@@ -243,9 +364,17 @@ export default function StatsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Top Productos */}
         <div className="bg-neutral-900/20 border-2 border-neutral-800 p-6">
-          <h3 className="text-[10px] font-black uppercase text-green-400 mb-6 flex items-center gap-2">
-            <TrendingUp size={14} /> Los más vendidos (Mes)
-          </h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-[10px] font-black uppercase text-green-400 flex items-center gap-2">
+              <TrendingUp size={14} /> Los más vendidos (Mes)
+            </h3>
+            <button 
+              onClick={() => exportPDF("RANKING TOP PRODUCTOS", [['#', 'Producto', 'Ventas']], topProducts.map((p, i) => [i+1, p.name, p.sales]), "Top_Productos")}
+              className="text-[8px] font-black text-green-400 border border-green-400 px-2 py-1 uppercase hover:bg-green-400 hover:text-black transition-all"
+            >
+              PDF
+            </button>
+          </div>
           <div className="space-y-4">
             {topProducts.map((p, i) => (
               <div key={p.name} className="flex items-center justify-between group">
@@ -270,9 +399,17 @@ export default function StatsPage() {
 
         {/* Bottom Productos */}
         <div className="bg-neutral-900/20 border-2 border-neutral-800 p-6">
-          <h3 className="text-[10px] font-black uppercase text-red-400 mb-6 flex items-center gap-2">
-            <TrendingDown size={14} /> Menos vendidos / Rotar (Mes)
-          </h3>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-[10px] font-black uppercase text-red-400 flex items-center gap-2">
+              <TrendingDown size={14} /> Menos vendidos (Mes)
+            </h3>
+            <button 
+              onClick={() => exportPDF("RANKING PRODUCTOS BAJA ROTACION", [['#', 'Producto', 'Ventas']], bottomProducts.map((p, i) => [i+1, p.name, p.sales]), "Bottom_Productos")}
+              className="text-[8px] font-black text-red-400 border border-red-400 px-2 py-1 uppercase hover:bg-red-400 hover:text-black transition-all"
+            >
+              PDF
+            </button>
+          </div>
           <div className="space-y-4">
             {bottomProducts.map((p, i) => (
               <div key={p.name} className="flex items-center justify-between group">

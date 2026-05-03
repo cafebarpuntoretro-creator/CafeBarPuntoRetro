@@ -222,36 +222,51 @@ export default function POSPage() {
     fetchRecentSales(); // Refresh history
   };
 
-  const handleCloseSession = async (realAmount: number) => {
+  const [closingData, setClosingData] = useState({
+    expected: 0,
+    real: 0,
+    reason: ""
+  });
+
+  const prepareCloseSession = async () => {
     if (!supabase || !currentSession) return;
     
-    // Calculate expected amount
-    const { data: sales, error: salesError } = await supabase
+    const { data: sales } = await supabase
       .from("sales")
-      .select("total")
+      .select("total, payment_method")
       .eq("session_id", currentSession.id);
     
-    if (salesError) {
-      alert(salesError.message);
+    const totalSales = sales?.reduce((sum, s) => sum + Number(s.total), 0) || 0;
+    const expected = Number(currentSession.initial_amount) + totalSales;
+    
+    setClosingData({ expected, real: expected, reason: "" });
+    setShowCloseDrawer(true);
+  };
+
+  const handleCloseSession = async () => {
+    if (!supabase || !currentSession) return;
+    
+    const diff = closingData.real - closingData.expected;
+    if (Math.abs(diff) > 0 && !closingData.reason) {
+      alert("Debes escribir un motivo para la diferencia en caja.");
       return;
     }
-
-    const totalSales = sales.reduce((sum, s) => sum + Number(s.total), 0);
-    const expected = Number(currentSession.initial_amount) + totalSales;
 
     const { error } = await supabase
       .from("cash_sessions")
       .update({
         closed_at: new Date().toISOString(),
-        final_amount_expected: expected,
-        final_amount_real: realAmount,
+        final_amount_expected: closingData.expected,
+        final_amount_real: closingData.real,
+        discrepancy_amount: diff,
+        discrepancy_reason: closingData.reason,
         status: 'closed'
       })
       .eq("id", currentSession.id);
     
     if (error) alert(error.message);
     else {
-      alert(`Sesión Cerrada.\nEsperado: $${expected.toFixed(2)}\nReal: $${realAmount.toFixed(2)}\nDiferencia: $${(realAmount - expected).toFixed(2)}`);
+      alert("Arqueo guardado exitosamente.");
       setCurrentSession(null);
       setShowCloseDrawer(false);
       setShowOpenDrawer(true);
@@ -303,42 +318,71 @@ export default function POSPage() {
         )}
       </AnimatePresence>
 
-      {/* Overlay: Cerrar Caja */}
+      {/* Overlay: Cerrar Caja (ARQUEO PROFESIONAL) */}
       <AnimatePresence>
         {showCloseDrawer && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6"
           >
-            <div className="bg-black border-4 border-primary-neon p-8 w-full max-w-md arcade-shadow-cyan">
-              <h2 className="text-primary-neon font-black text-2xl uppercase italic mb-6 tracking-tighter">Cierre de Caja</h2>
-              <p className="text-neutral-500 text-[10px] uppercase font-bold mb-8">Ingresa el total de efectivo real contado en caja</p>
+            <div className="bg-black border-4 border-primary-neon p-8 w-full max-w-2xl arcade-shadow-cyan">
+              <h2 className="text-primary-neon font-black text-3xl uppercase italic mb-8 tracking-tighter flex items-center gap-3">
+                <ReceiptText size={32} /> Arqueo de Caja Detallado
+              </h2>
               
-              <div className="space-y-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] uppercase font-bold text-primary-neon">Efectivo Real en Caja</label>
-                  <input 
-                    type="number" 
-                    id="real-cash-input"
-                    className="bg-neutral-900 border-2 border-neutral-800 p-4 text-2xl font-mono text-white outline-none focus:border-primary-neon"
-                    autoFocus
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="space-y-4">
+                  <div className="bg-neutral-900 p-4 border-l-4 border-secondary-neon">
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Monto Esperado (Sistema)</p>
+                    <p className="text-2xl font-black text-white font-mono">${closingData.expected.toFixed(2)}</p>
+                  </div>
+                  
+                  <div className="bg-neutral-900 p-4 border-l-4 border-primary-neon">
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Monto Real en Caja</p>
+                    <input 
+                      type="number" 
+                      value={closingData.real}
+                      onChange={(e) => setClosingData({...closingData, real: parseFloat(e.target.value) || 0})}
+                      className="bg-transparent border-none p-0 text-2xl font-black text-primary-neon font-mono outline-none w-full"
+                    />
+                  </div>
                 </div>
+
+                <div className="space-y-4">
+                  <div className={`p-4 border-l-4 ${closingData.real - closingData.expected === 0 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Diferencia (Sobrante/Faltante)</p>
+                    <p className={`text-2xl font-black font-mono ${closingData.real - closingData.expected === 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      ${(closingData.real - closingData.expected).toFixed(2)}
+                    </p>
+                  </div>
+
+                  {Math.abs(closingData.real - closingData.expected) > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-primary-neon">Justificación de la Diferencia</label>
+                      <textarea 
+                        value={closingData.reason}
+                        onChange={(e) => setClosingData({...closingData, reason: e.target.value})}
+                        placeholder="Ej: Pago a proveedor, error en vuelto, etc..."
+                        className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-[10px] font-bold text-white outline-none focus:border-primary-neon h-20"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4">
                 <button 
-                  onClick={() => {
-                    const val = (document.getElementById('real-cash-input') as HTMLInputElement).value;
-                    handleCloseSession(parseFloat(val) || 0);
-                  }}
-                  className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-pink"
+                  onClick={handleCloseSession}
+                  className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-pink hover:scale-[1.02] transition-transform"
                 >
-                  Finalizar Turno y Guardar
+                  Confirmar Arqueo y Cerrar Turno
                 </button>
                 <button 
                   onClick={() => setShowCloseDrawer(false)}
                   className="w-full text-neutral-500 text-[10px] uppercase font-bold hover:text-white"
                 >
-                  Cancelar
+                  Volver al POS
                 </button>
               </div>
             </div>
@@ -358,7 +402,7 @@ export default function POSPage() {
                 </p>
                 <span className="text-neutral-800">|</span>
                 <button 
-                  onClick={() => setShowCloseDrawer(true)}
+                  onClick={prepareCloseSession}
                   className="text-[10px] font-black text-primary-neon uppercase hover:underline"
                 >
                   Cerrar Caja [X]

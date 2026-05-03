@@ -8,7 +8,8 @@ import {
   BarChart,
   Settings, 
   Bell, 
-  User
+  User,
+  History
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -99,6 +100,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarItem icon={Boxes} label="INVENTARIO" href="/inventory" active={pathname === "/inventory"} />
           <SidebarItem icon={ReceiptText} label="NUEVA VENTA" href="/pos" active={pathname === "/pos"} />
           <SidebarItem icon={BarChart} label="ESTADÍSTICAS" href="/stats" active={pathname === "/stats"} />
+          <SidebarItem icon={History} label="HISTORIAL DE CIERRES" href="/cash-history" active={pathname === "/cash-history"} />
           <SidebarItem icon={Settings} label="SISTEMA" href="#" active={false} />
         </nav>
       </aside>

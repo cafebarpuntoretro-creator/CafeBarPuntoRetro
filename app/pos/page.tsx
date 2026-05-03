@@ -12,7 +12,8 @@ import {
   Barcode,
   Search,
   Loader2,
-  Check
+  Check,
+  Clock
 } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion, AnimatePresence } from "motion/react";
@@ -50,10 +51,29 @@ export default function POSPage() {
   const scanBuffer = useRef("");
   const lastKeyTime = useRef(Date.now());
 
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+
   useEffect(() => {
     fetchSession();
     fetchProducts();
+    fetchRecentSales();
   }, []); // Run only once on mount
+
+  const fetchRecentSales = async () => {
+    if (!supabase) return;
+    const { data } = await supabase
+      .from("sales")
+      .select(`
+        id,
+        total,
+        payment_method,
+        created_at,
+        sale_items (quantity, products (name))
+      `)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    setRecentSales(data || []);
+  };
 
   useEffect(() => {
     // Global barcode listener
@@ -199,6 +219,7 @@ export default function POSPage() {
     setDiscount(0);
     setTip(0);
     fetchProducts(); // Refresh stock in UI
+    fetchRecentSales(); // Refresh history
   };
 
   const handleCloseSession = async (realAmount: number) => {
@@ -382,6 +403,26 @@ export default function POSPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Mini Historial Reciente */}
+          <div className="mt-8 border-t-4 border-neutral-900 pt-6">
+            <h3 className="text-[10px] font-black uppercase text-neutral-500 mb-4 tracking-widest flex items-center gap-2">
+              <Clock size={12} /> Últimas Ventas del Turno
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentSales.map((sale) => (
+                <div key={sale.id} className="bg-neutral-900/30 border border-neutral-800 p-3 flex justify-between items-center">
+                  <div>
+                    <p className="text-[9px] font-black text-white uppercase">#{sale.id.slice(0,5)} - {sale.payment_method}</p>
+                    <p className="text-[8px] text-neutral-600 font-bold">
+                      {sale.sale_items?.map((i:any) => i.products?.name).join(', ')}
+                    </p>
+                  </div>
+                  <span className="text-secondary-neon font-black text-xs">${Number(sale.total).toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

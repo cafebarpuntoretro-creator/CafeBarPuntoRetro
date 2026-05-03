@@ -13,6 +13,27 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
+
+const RealTimeClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-start ml-4 pl-4 border-l-2 border-neutral-900">
+      <span className="text-[10px] font-mono text-secondary-neon tracking-widest">
+        {time.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}
+      </span>
+      <span className="text-[10px] font-black text-white font-mono tracking-[0.2em]">
+        {time.toLocaleTimeString('es-CO', { hour12: false })}
+      </span>
+    </div>
+  );
+};
 
 const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: string, href: string, active: boolean }) => (
   <Link href={href} passHref legacyBehavior>
@@ -44,6 +65,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <h1 className="text-2xl font-black italic text-primary-neon drop-shadow-[3px_3px_0px_#00FFFF] uppercase tracking-widest">
             PUNTO RETRO <span className="text-secondary-neon">POS</span>
           </h1>
+          <RealTimeClock />
         </div>
         <div className="flex items-center gap-6">
           <div className="relative cursor-pointer hover:scale-110 transition-transform">

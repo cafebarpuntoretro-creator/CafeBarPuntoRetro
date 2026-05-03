@@ -287,9 +287,12 @@ export default function POSPage() {
   };
 
   const [closingData, setClosingData] = useState({
-    expected: 0,
+    expectedCash: 0,
+    expectedElectronic: 0,
+    totalSales: 0,
     real: 0,
-    reason: ""
+    reason: "",
+    breakdown: { cash: 0, nequi: 0, daviplata: 0, card: 0 }
   });
 
   const prepareCloseSession = async () => {
@@ -300,19 +303,37 @@ export default function POSPage() {
       .select("total, payment_method")
       .eq("session_id", currentSession.id);
     
-    const totalSales = sales?.reduce((sum, s) => sum + Number(s.total), 0) || 0;
-    const expected = Number(currentSession.initial_amount) + totalSales;
+    const breakdown = { cash: 0, nequi: 0, daviplata: 0, card: 0 };
+    sales?.forEach(s => {
+      const amt = Number(s.total);
+      if (s.payment_method === 'Efectivo') breakdown.cash += amt;
+      else if (s.payment_method === 'Nequi') breakdown.nequi += amt;
+      else if (s.payment_method === 'Daviplata') breakdown.daviplata += amt;
+      else if (s.payment_method === 'Tarjeta') breakdown.card += amt;
+    });
     
-    setClosingData({ expected, real: expected, reason: "" });
+    const expectedCash = Number(currentSession.initial_amount) + breakdown.cash;
+    const expectedElectronic = breakdown.nequi + breakdown.daviplata + breakdown.card;
+    const totalSales = breakdown.cash + expectedElectronic;
+    
+    setClosingData({ 
+      expectedCash, 
+      expectedElectronic, 
+      totalSales, 
+      real: expectedCash, 
+      reason: "",
+      breakdown
+    });
     setShowCloseDrawer(true);
   };
 
   const handleCloseSession = async () => {
     if (!supabase || !currentSession) return;
     
-    const diff = closingData.real - closingData.expected;
+    // Discrepancy is only based on physical CASH
+    const diff = closingData.real - closingData.expectedCash;
     if (Math.abs(diff) > 0 && !closingData.reason) {
-      alert("Debes escribir un motivo para la diferencia en caja.");
+      alert("Debes escribir un motivo para la diferencia de efectivo.");
       return;
     }
 
@@ -320,8 +341,8 @@ export default function POSPage() {
       .from("cash_sessions")
       .update({
         closed_at: new Date().toISOString(),
-        final_amount_expected: closingData.expected,
-        final_amount_real: closingData.real,
+        final_amount_expected: closingData.expectedCash + closingData.expectedElectronic,
+        final_amount_real: closingData.real + closingData.expectedElectronic,
         discrepancy_amount: diff,
         discrepancy_reason: closingData.reason,
         status: 'closed'
@@ -330,7 +351,7 @@ export default function POSPage() {
     
     if (error) alert(error.message);
     else {
-      alert("Arqueo guardado exitosamente.");
+      alert("Arqueo guardado exitosamente. Caja cerrada.");
       setCurrentSession(null);
       setShowCloseDrawer(false);
       setShowOpenDrawer(true);
@@ -398,40 +419,59 @@ export default function POSPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div className="space-y-4">
                   <div className="bg-neutral-900 p-4 border-l-4 border-secondary-neon">
-                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Monto Esperado (Sistema)</p>
-                    <p className="text-2xl font-black text-white font-mono">${closingData.expected.toFixed(2)}</p>
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Efectivo Esperado (Cajón)</p>
+                    <div className="flex justify-between items-end">
+                      <p className="text-2xl font-black text-white font-mono">${closingData.expectedCash.toFixed(0)}</p>
+                      <p className="text-[9px] text-neutral-600 font-bold uppercase pb-1">Base + Ventas Cash</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-neutral-900 p-4 border-l-4 border-purple-500">
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Total Digital (Nequi/Tarjeta/etc)</p>
+                    <p className="text-xl font-black text-purple-400 font-mono">${closingData.expectedElectronic.toFixed(0)}</p>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <div className="text-[8px] text-neutral-600 uppercase font-bold">NQ: ${closingData.breakdown.nequi}</div>
+                      <div className="text-[8px] text-neutral-600 uppercase font-bold">DV: ${closingData.breakdown.daviplata}</div>
+                      <div className="text-[8px] text-neutral-600 uppercase font-bold">TJ: ${closingData.breakdown.card}</div>
+                    </div>
                   </div>
                   
                   <div className="bg-neutral-900 p-4 border-l-4 border-primary-neon">
-                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Monto Real en Caja</p>
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Conteo Real de Efectivo</p>
                     <input 
                       type="number" 
                       value={closingData.real}
                       onChange={(e) => setClosingData({...closingData, real: parseFloat(e.target.value) || 0})}
-                      className="bg-transparent border-none p-0 text-2xl font-black text-primary-neon font-mono outline-none w-full"
+                      className="bg-transparent border-none p-0 text-3xl font-black text-primary-neon font-mono outline-none w-full"
+                      autoFocus
                     />
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className={`p-4 border-l-4 ${closingData.real - closingData.expected === 0 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
-                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Diferencia (Sobrante/Faltante)</p>
-                    <p className={`text-2xl font-black font-mono ${closingData.real - closingData.expected === 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ${(closingData.real - closingData.expected).toFixed(2)}
+                  <div className={`p-4 border-l-4 ${closingData.real - closingData.expectedCash === 0 ? 'border-green-500 bg-green-900/20' : 'border-red-500 bg-red-900/20'}`}>
+                    <p className="text-[10px] uppercase font-bold text-neutral-500 mb-1">Diferencia de Efectivo</p>
+                    <p className={`text-2xl font-black font-mono ${closingData.real - closingData.expectedCash === 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      ${(closingData.real - closingData.expectedCash).toFixed(0)}
                     </p>
                   </div>
 
-                  {Math.abs(closingData.real - closingData.expected) > 0 && (
+                  {Math.abs(closingData.real - closingData.expectedCash) > 0 && (
                     <div className="space-y-2">
-                      <label className="text-[10px] uppercase font-bold text-primary-neon">Justificación de la Diferencia</label>
+                      <label className="text-[10px] uppercase font-bold text-primary-neon">¿Por qué hay una diferencia?</label>
                       <textarea 
                         value={closingData.reason}
                         onChange={(e) => setClosingData({...closingData, reason: e.target.value})}
-                        placeholder="Ej: Pago a proveedor, error en vuelto, etc..."
-                        className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-[10px] font-bold text-white outline-none focus:border-primary-neon h-20"
+                        placeholder="Ej: Pago de hielo, error en vuelto, dinero retirado por dueño..."
+                        className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-[10px] font-bold text-white outline-none focus:border-primary-neon h-24"
                       />
                     </div>
                   )}
+                  
+                  <div className="bg-neutral-900/50 p-4 border-2 border-neutral-800">
+                    <p className="text-[9px] uppercase font-bold text-neutral-700 mb-1">Ventas Totales del Turno</p>
+                    <p className="text-lg font-black text-white opacity-50 font-mono">${closingData.totalSales.toFixed(0)}</p>
+                  </div>
                 </div>
               </div>
 

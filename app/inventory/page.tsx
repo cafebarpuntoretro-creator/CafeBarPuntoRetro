@@ -1,79 +1,215 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Edit2, Trash2, Loader2, X, Check } from "lucide-react";
 import Shell from "@/components/Shell";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { supabase } from "@/lib/supabase";
+
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  image_url?: string;
+}
 
 export default function InventoryPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "Bebidas",
+    price: 0,
+    stock: 0
+  });
 
-  const products = [
-    { id: 1, name: "Pac-Man IPA", category: "Bebidas", price: 15.0, stock: 45 },
-    { id: 2, name: "Donkey Kong Pretzels", category: "Snacks", price: 8.5, stock: 12 },
-    { id: 3, name: "Pixel Latte", category: "Café", price: 12.0, stock: 30 },
-  ];
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching products:", error);
+    } else {
+      setProducts(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+
+    if (editingId) {
+      const { error } = await supabase
+        .from("products")
+        .update(formData)
+        .eq("id", editingId);
+      
+      if (error) alert("Error al actualizar: " + error.message);
+      else {
+        setEditingId(null);
+        setShowAddForm(false);
+        fetchProducts();
+      }
+    } else {
+      const { error } = await supabase
+        .from("products")
+        .insert([formData]);
+      
+      if (error) alert("Error al guardar: " + error.message);
+      else {
+        setShowAddForm(false);
+        setFormData({ name: "", category: "Bebidas", price: 0, stock: 0 });
+        fetchProducts();
+      }
+    }
+  };
+
+  const handleEdit = (p: Product) => {
+    setEditingId(p.id);
+    setFormData({
+      name: p.name,
+      category: p.category,
+      price: p.price,
+      stock: p.stock
+    });
+    setShowAddForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!supabase) return;
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
+    
+    if (error) alert("Error al eliminar: " + error.message);
+    else fetchProducts();
+  };
 
   return (
     <Shell>
       <header className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-secondary-neon font-black text-3xl italic uppercase tracking-tighter">Inventario</h1>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Gestiona tus suministros</p>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Control de existencias del sistema</p>
         </div>
         <motion.button 
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 bg-primary-neon text-black font-black p-4 arcade-shadow-cyan uppercase text-xs"
-          onClick={() => setShowAddForm(!showAddForm)}
+          className={`flex items-center gap-2 font-black p-4 arcade-shadow-cyan uppercase text-xs transition-colors ${
+            showAddForm ? 'bg-primary-neon text-black' : 'bg-secondary-neon text-black'
+          }`}
+          onClick={() => {
+            if (showAddForm) {
+              setEditingId(null);
+              setFormData({ name: "", category: "Bebidas", price: 0, stock: 0 });
+            }
+            setShowAddForm(!showAddForm);
+          }}
         >
-          <Plus size={18} />
-          Agregar Ítem
+          {showAddForm ? <X size={18} /> : <Plus size={18} />}
+          {showAddForm ? 'Cerrar Panel' : 'Nuevo Producto'}
         </motion.button>
       </header>
 
-      {showAddForm && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-black border-4 border-primary-neon p-6 mb-8 shadow-[8px_8px_0px_0px_rgba(255,0,127,0.3)]"
-        >
-          <h3 className="text-primary-neon font-black text-sm uppercase mb-6">Nuevo Ítem</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase font-bold text-neutral-500">Nombre</label>
-              <input type="text" className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-primary-neon outline-none" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase font-bold text-neutral-500">Categoría</label>
-              <select className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-primary-neon outline-none">
-                <option>Bebidas</option>
-                <option>Snacks</option>
-                <option>Café</option>
-                <option>Juegos</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase font-bold text-neutral-500">Precio</label>
-              <input type="number" className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-primary-neon outline-none" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase font-bold text-neutral-500">Stock</label>
-              <input type="number" className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-primary-neon outline-none" />
-            </div>
-          </div>
-          <div className="mt-8 flex gap-4">
-            <button className="bg-secondary-neon text-black font-black px-6 py-2 text-xs uppercase arcade-shadow-pink">Guardar</button>
-            <button className="text-neutral-500 font-bold px-6 py-2 text-xs uppercase hover:text-white" onClick={() => setShowAddForm(false)}>Cancelar</button>
-          </div>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-black border-4 border-primary-neon p-6 mb-8 shadow-[8px_8px_0px_0px_rgba(255,0,127,0.3)]"
+          >
+            <h3 className="text-primary-neon font-black text-sm uppercase mb-6 flex items-center gap-2">
+              <PlusCircleIcon className="w-4 h-4" /> {editingId ? 'Editar Producto' : 'Registrar Nuevo Ítem'}
+            </h3>
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-neutral-500">Nombre del Producto</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white" 
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-neutral-500">Categoría</label>
+                  <select 
+                    value={formData.category}
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white"
+                  >
+                    <option>Bebidas</option>
+                    <option>Comida</option>
+                    <option>Cafetería</option>
+                    <option>Arcade</option>
+                    <option>Merchandising</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-neutral-500">Precio (CRED)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    required
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                    className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white font-mono" 
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-neutral-500">Stock Inicial</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={formData.stock}
+                    onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value)})}
+                    className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white font-mono" 
+                  />
+                </div>
+              </div>
+              <div className="mt-8 flex gap-4">
+                <button type="submit" className="bg-secondary-neon text-black font-black px-6 py-3 text-xs uppercase arcade-shadow-pink flex items-center gap-2">
+                  <Check size={16} /> {editingId ? 'Actualizar Registro' : 'Confirmar Registro'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="bg-black border-4 border-neutral-900 overflow-hidden">
+      <div className="bg-black border-4 border-neutral-900 overflow-hidden relative min-h-[400px]">
+        {loading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
+            <Loader2 className="text-secondary-neon animate-spin mb-4" size={48} />
+            <p className="text-[10px] font-mono text-secondary-neon animate-pulse uppercase tracking-[0.3em]">Cargando Base de Datos...</p>
+          </div>
+        ) : null}
+
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-neutral-900/50">
-              <th className="p-4 text-[10px] uppercase text-secondary-neon font-black tracking-widest border-b-2 border-neutral-800">Ítem</th>
+              <th className="p-4 text-[10px] uppercase text-secondary-neon font-black tracking-widest border-b-2 border-neutral-800">Producto</th>
               <th className="p-4 text-[10px] uppercase text-secondary-neon font-black tracking-widest border-b-2 border-neutral-800">Categoría</th>
               <th className="p-4 text-[10px] uppercase text-secondary-neon font-black tracking-widest border-b-2 border-neutral-800">Precio</th>
               <th className="p-4 text-[10px] uppercase text-secondary-neon font-black tracking-widest border-b-2 border-neutral-800">Stock</th>
@@ -81,33 +217,97 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id} className="border-b border-neutral-900 hover:bg-neutral-900/30 transition-colors">
-                <td className="p-4 font-bold text-sm">{p.name}</td>
-                <td className="p-4 text-xs text-tertiary-neon uppercase font-bold">{p.category}</td>
-                <td className="p-4 font-mono text-sm">${p.price.toFixed(2)}</td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-2 bg-neutral-900 border border-neutral-800 overflow-hidden">
-                      <div 
-                        className={`h-full ${p.stock < 15 ? 'bg-primary-neon' : 'bg-secondary-neon'}`}
-                        style={{ width: `${Math.min(p.stock, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold">{p.stock}</span>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-4">
-                    <button className="text-secondary-neon hover:scale-110 transition-transform"><Edit2 size={16}/></button>
-                    <button className="text-primary-neon hover:scale-110 transition-transform"><Trash2 size={16}/></button>
-                  </div>
+            {products.length === 0 && !loading ? (
+              <tr>
+                <td colSpan={5} className="p-12 text-center text-neutral-600 font-mono text-[10px] uppercase tracking-widest">
+                  No hay productos registrados en el sistema
                 </td>
               </tr>
-            ))}
+            ) : (
+              products.map((p) => (
+                <tr key={p.id} className="border-b border-neutral-900 hover:bg-neutral-900/30 transition-colors group">
+                  <td className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 bg-neutral-900 border border-neutral-800 flex items-center justify-center text-lg grayscale group-hover:grayscale-0 transition-all">
+                        📦
+                      </div>
+                      <span className="font-bold text-sm tracking-tight">{p.name}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 text-[10px] text-tertiary-neon uppercase font-bold tracking-wider">{p.category}</td>
+                  <td className="p-4 font-mono text-sm text-white">${Number(p.price).toFixed(2)}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 h-2 bg-neutral-900 border border-neutral-800 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-1000 ${
+                            p.stock < 10 ? 'bg-primary-neon animate-pulse' : 
+                            p.stock < 30 ? 'bg-yellow-500' : 'bg-secondary-neon'
+                          }`}
+                          style={{ width: `${Math.min((p.stock / 100) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-black font-mono ${p.stock < 10 ? 'text-primary-neon' : 'text-white'}`}>
+                        {p.stock}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-4">
+                      <motion.button 
+                        whileHover={{ scale: 1.2, rotate: -10 }}
+                        whileTap={{ scale: 0.8 }}
+                        onClick={() => handleEdit(p)}
+                        className="text-secondary-neon hover:text-white transition-colors"
+                      >
+                        <Edit2 size={16}/>
+                      </motion.button>
+                      <motion.button 
+                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        whileTap={{ scale: 0.8 }}
+                        onClick={() => handleDelete(p.id)}
+                        className="text-primary-neon hover:text-white transition-colors"
+                      >
+                        <Trash2 size={16}/>
+                      </motion.button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+      
+      {/* Footer Stats Overlay */}
+      <div className="fixed bottom-0 left-64 right-0 h-10 bg-black border-t-2 border-neutral-900 px-6 flex items-center justify-between text-[8px] font-mono uppercase tracking-[0.2em] text-neutral-500">
+        <div className="flex gap-6">
+          <span>Total de Ítems: <span className="text-secondary-neon">{products.length}</span></span>
+          <span>Stock Bajo: <span className="text-primary-neon">{products.filter(p => p.stock < 10).length}</span></span>
+        </div>
+        <div className="animate-pulse">SISTEMA_INVENTARIO: ONLINE</div>
+      </div>
     </Shell>
   );
+}
+
+function PlusCircleIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 12h8" />
+      <path d="M12 8v8" />
+    </svg>
+  )
 }

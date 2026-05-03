@@ -53,7 +53,7 @@ export default function LoginPage() {
         playsInline 
         className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 grayscale-[0.5] brightness-50"
       >
-        <source src="/images/logovideo.mp4" type="video/mp4" />
+        <source src="/logovideo.mp4" type="video/mp4" />
       </video>
 
       <div className="scanline-overlay z-10" />
@@ -67,7 +67,7 @@ export default function LoginPage() {
           <motion.img 
             initial={{ y: -20 }}
             animate={{ y: 0 }}
-            src="/images/branding-logo.jpg" 
+            src="/branding-logo.jpg" 
             alt="Punto Retro Logo" 
             className="w-48 h-auto mb-4 border-2 border-primary-neon p-1 bg-black arcade-shadow-cyan"
           />

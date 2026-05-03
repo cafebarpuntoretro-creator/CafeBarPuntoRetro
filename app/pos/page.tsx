@@ -14,7 +14,9 @@ import {
   Loader2,
   Check,
   Clock,
-  ReceiptText
+  ReceiptText,
+  Edit3,
+  Pencil
 } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion, AnimatePresence } from "motion/react";
@@ -62,6 +64,11 @@ export default function POSPage() {
 
   const fetchRecentSales = async () => {
     if (!supabase) return;
+    
+    // Calculate start of today in ISO format
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const { data } = await supabase
       .from("sales")
       .select(`
@@ -69,11 +76,41 @@ export default function POSPage() {
         total,
         payment_method,
         created_at,
-        sale_items (quantity, products (name))
+        sale_items (quantity, product_id, products (name))
       `)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .gte("created_at", today.toISOString())
+      .order("created_at", { ascending: false });
     setRecentSales(data || []);
+  };
+
+  const handleDeleteSale = async (sale: any) => {
+    if (!supabase) return;
+    if (!confirm("¿Seguro que quieres eliminar esta venta? El stock será devuelto.")) return;
+
+    // 1. Return stock
+    for (const item of sale.sale_items) {
+      await supabase.rpc('decrement_stock', { x: -item.quantity, row_id: item.product_id });
+    }
+
+    // 2. Delete sale (cascades to sale_items)
+    const { error } = await supabase.from("sales").delete().eq("id", sale.id);
+    
+    if (error) alert(error.message);
+    else {
+      fetchRecentSales();
+      fetchProducts();
+    }
+  };
+
+  const handleEditPayment = async (saleId: string, newMethod: string) => {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("sales")
+      .update({ payment_method: newMethod })
+      .eq("id", saleId);
+    
+    if (error) alert(error.message);
+    else fetchRecentSales();
   };
 
   useEffect(() => {
@@ -457,14 +494,35 @@ export default function POSPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recentSales.map((sale) => (
-                <div key={sale.id} className="bg-neutral-900/30 border border-neutral-800 p-3 flex justify-between items-center">
+                <div key={sale.id} className="bg-neutral-900/30 border border-neutral-800 p-3 flex justify-between items-center group relative">
                   <div>
-                    <p className="text-[9px] font-black text-white uppercase">#{sale.id.slice(0,5)} - {sale.payment_method}</p>
-                    <p className="text-[8px] text-neutral-600 font-bold">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[9px] font-black text-white uppercase">#{sale.id.slice(0,5)}</p>
+                      <select 
+                        value={sale.payment_method}
+                        onChange={(e) => handleEditPayment(sale.id, e.target.value)}
+                        className="bg-transparent text-[8px] font-bold text-secondary-neon uppercase outline-none cursor-pointer border border-transparent hover:border-secondary-neon px-1"
+                      >
+                        <option value="Efectivo" className="bg-black">Efectivo</option>
+                        <option value="Nequi" className="bg-black">Nequi</option>
+                        <option value="Daviplata" className="bg-black">Daviplata</option>
+                        <option value="Tarjeta" className="bg-black">Tarjeta</option>
+                      </select>
+                    </div>
+                    <p className="text-[8px] text-neutral-600 font-bold max-w-[150px] truncate">
                       {sale.sale_items?.map((i:any) => i.products?.name).join(', ')}
                     </p>
                   </div>
-                  <span className="text-secondary-neon font-black text-xs">${Number(sale.total).toFixed(0)}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-secondary-neon font-black text-xs">${Number(sale.total).toFixed(0)}</span>
+                    <button 
+                      onClick={() => handleDeleteSale(sale)}
+                      className="text-neutral-700 hover:text-primary-neon transition-colors opacity-0 group-hover:opacity-100"
+                      title="Eliminar Venta"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -67,7 +67,7 @@ export default function LoginPage() {
           <motion.img 
             initial={{ y: -20 }}
             animate={{ y: 0 }}
-            src="/images/Logo.jpeg" 
+            src="/images/logo.jpg" 
             alt="Punto Retro Logo" 
             className="w-48 h-auto mb-4 border-2 border-primary-neon p-1 bg-black arcade-shadow-cyan"
           />

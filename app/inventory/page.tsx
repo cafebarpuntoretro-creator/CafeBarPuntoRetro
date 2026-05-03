@@ -55,14 +55,28 @@ export default function InventoryPage() {
     e.preventDefault();
     if (!supabase) return;
 
+    // Clean data: Ensure numbers are numbers and barcode is null if empty
+    const cleanData = {
+      ...formData,
+      barcode: formData.barcode.trim() === "" ? null : formData.barcode.trim(),
+      price: Number(formData.price),
+      stock: Number(formData.stock)
+    };
+
     if (editingId) {
       const { error } = await supabase
         .from("products")
-        .update(formData)
+        .update(cleanData)
         .eq("id", editingId);
       
-      if (error) alert("Error al actualizar: " + error.message);
-      else {
+      if (error) {
+        window.dispatchEvent(new CustomEvent('pos-notify', {
+          detail: { title: 'Error', message: 'No se pudo actualizar: ' + error.message, type: 'alert' }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('pos-notify', {
+          detail: { title: 'Actualizado', message: 'Producto modificado exitosamente', type: 'info' }
+        }));
         setEditingId(null);
         setShowAddForm(false);
         fetchProducts();
@@ -70,10 +84,16 @@ export default function InventoryPage() {
     } else {
       const { error } = await supabase
         .from("products")
-        .insert([formData]);
+        .insert([cleanData]);
       
-      if (error) alert("Error al guardar: " + error.message);
-      else {
+      if (error) {
+        window.dispatchEvent(new CustomEvent('pos-notify', {
+          detail: { title: 'Error', message: 'Error al guardar: ' + error.message, type: 'alert' }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('pos-notify', {
+          detail: { title: 'Registrado', message: 'Nuevo producto añadido al sistema', type: 'info' }
+        }));
         setShowAddForm(false);
         setFormData({ name: "", category: "Bebidas", price: 0, stock: 0, barcode: "" });
         fetchProducts();
@@ -91,19 +111,35 @@ export default function InventoryPage() {
       barcode: p.barcode || ""
     });
     setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
     if (!supabase) return;
-    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+    if (!confirm("¿Estás seguro de eliminar este producto? Esta acción es definitiva.")) return;
 
     const { error } = await supabase
       .from("products")
       .delete()
       .eq("id", id);
     
-    if (error) alert("Error al eliminar: " + error.message);
-    else fetchProducts();
+    if (error) {
+      const isLinked = error.message.includes("violates foreign key constraint");
+      window.dispatchEvent(new CustomEvent('pos-notify', {
+        detail: { 
+          title: 'Error al Eliminar', 
+          message: isLinked 
+            ? 'No puedes eliminarlo porque tiene ventas registradas. Intenta editar el stock a 0.' 
+            : error.message, 
+          type: 'alert' 
+        }
+      }));
+    } else {
+      window.dispatchEvent(new CustomEvent('pos-notify', {
+        detail: { title: 'Eliminado', message: 'Producto removido del sistema', type: 'info' }
+      }));
+      fetchProducts();
+    }
   };
 
   return (

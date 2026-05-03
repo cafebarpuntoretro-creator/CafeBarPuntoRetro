@@ -51,7 +51,7 @@ export default function LoginPage() {
         loop 
         muted 
         playsInline 
-        className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 grayscale-[0.5] brightness-50"
+        className="absolute inset-0 w-full h-full object-cover z-0 opacity-70 brightness-90"
       >
         <source src="/logovideo.mp4" type="video/mp4" />
       </video>

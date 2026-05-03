@@ -5,200 +5,278 @@ import {
   BarChart, 
   PlusCircle, 
   PackagePlus, 
-  Radio
+  Radio,
+  AlertTriangle,
+  TrendingUp,
+  CreditCard
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Shell from '@/components/Shell';
+import { supabase } from '@/lib/supabase';
+import { format } from 'date-fns';
 
 // --- Types ---
-interface Transaction {
+interface Sale {
   id: string;
-  items: string;
-  amount: string;
-  time: string;
-  type: 'sale' | 'processing';
+  total: number;
+  created_at: string;
+  payment_method: string;
+}
+
+interface LowStockProduct {
+  id: string;
+  name: string;
+  stock: number;
 }
 
 // --- Components ---
 
-const StatCard = ({ label, value, unit, color, progress }: { label: string, value: string, unit: string, color: string, progress: number }) => (
+const StatCard = ({ label, value, unit, color, icon: Icon }: { label: string, value: string, unit: string, color: string, icon: any }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`bg-black border-4 p-4 shadow-[4px_4px_0_0_currentColor] flex flex-col justify-between`}
+    className="bg-black border-4 p-4 shadow-[4px_4px_0_0_currentColor] flex flex-col justify-between"
     style={{ borderColor: color, color: color }}
   >
-    <span className="text-[10px] uppercase tracking-[0.2em] mb-2">{label}</span>
-    <div className="flex items-baseline gap-2">
-      <span className="text-4xl font-black italic tracking-tighter text-white">{value}</span>
-      <span className="text-xs font-bold">{unit}</span>
+    <div className="flex justify-between items-start">
+      <span className="text-[10px] uppercase tracking-[0.2em] mb-2 font-black">{label}</span>
+      <Icon size={16} />
     </div>
-    <div className="mt-4 h-1 w-full bg-neutral-900 overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ duration: 1, ease: 'easeOut' }}
-        className="h-full bg-current"
-      />
+    <div className="flex items-baseline gap-2">
+      <span className="text-4xl font-black italic tracking-tighter text-white">
+        {value}
+      </span>
+      <span className="text-xs font-bold">{unit}</span>
     </div>
   </motion.div>
 );
 
-const QuickActionButton = ({ icon: Icon, label, color, bgColor, iconFill = false, href = "#" }: { icon: any, label: string, color: string, bgColor: string, iconFill?: boolean, href?: string }) => (
+const QuickActionButton = ({ icon: Icon, label, color, bgColor, href = "#" }: { icon: any, label: string, color: string, bgColor: string, href?: string }) => (
   <motion.a
     href={href}
-    whileHover={{ scale: 1.02, y: -2 }}
-    whileTap={{ translate: '2px 2px', boxShadow: '0px 0px 0px 0px currentColor' }}
-    className={`flex flex-col items-center justify-center gap-4 p-12 border-4 border-black transition-all group arcade-shadow-pink h-full cursor-pointer`}
-    style={{ backgroundColor: bgColor, color: color, boxShadow: `4px 4px 0px 0px ${color === '#00FFFF' ? '#00FFFF' : (color === '#d7ca00' ? '#d7ca00' : '#FF007F')}` }}
+    whileHover={{ scale: 1.05, y: -2 }}
+    whileTap={{ scale: 0.95 }}
+    className="flex flex-col items-center justify-center gap-3 p-8 border-4 border-black arcade-shadow-pink h-full cursor-pointer transition-all"
+    style={{ backgroundColor: bgColor, color: color, boxShadow: `4px 4px 0px 0px ${color}` }}
   >
-    <Icon 
-      size={48} 
-      className="group-hover:scale-110 transition-transform" 
-      fill={iconFill ? "currentColor" : "none"} 
-    />
-    <span className="font-bold text-sm tracking-widest uppercase">{label}</span>
+    <Icon size={32} />
+    <span className="font-black text-xs tracking-widest uppercase">{label}</span>
   </motion.a>
 );
 
-const FeedItem = ({ transaction }: { transaction: Transaction }) => (
-  <motion.div 
-    initial={{ x: -20, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    className={`flex items-center justify-between p-4 bg-black border-l-4 hover:bg-neutral-900 transition-colors border-secondary-neon`}
-  >
-    <div className="flex gap-4 items-center">
-      <span className="text-secondary-neon font-mono text-xs">{transaction.id}</span>
-      <span className="text-sm font-medium">{transaction.items}</span>
-    </div>
-    <div className="flex gap-4 items-center">
-      <span className="font-bold text-tertiary-neon">{transaction.amount} CR</span>
-      <span className="text-[10px] font-mono text-neutral-500 uppercase">{transaction.time}</span>
-    </div>
-  </motion.div>
-);
-
-export default function Home() {
-  const [logs, setLogs] = useState<string[]>([
-    '> INICIANDO CHEQUEO_SISTEMA...',
-    '> ENLACE_RED: ESTABLECIDO [PING 12ms]',
-    '> AUTH_BASE_DATOS: ÉXITO',
-    '> RASTREADOR_INGRESOS: ACTIVO',
-    '> ESCANEANDO ANOMALÍAS... NINGUNA',
-    '> AVISO: PAPEL_IMPRESORA_BAJO (TERMINAL_3)',
-  ]);
-
-  const [transactions] = useState<Transaction[]>([
-    { id: '#TRX_982', items: '2x MARGARITA NEÓN, 1x PAPAS PÍXEL', amount: '42.00', time: 'HACE 2 MIN', type: 'sale' },
-    { id: '#TRX_981', items: '4x CERVEZA RETRO, 2x SLIDERS GLOW', amount: '68.50', time: 'HACE 5 MIN', type: 'sale' },
-    { id: '#TRX_980', items: '1x CAFÉ CYBER, 1x BROWNIE-BIT', amount: '15.25', time: 'HACE 12 MIN', type: 'sale' },
-  ]);
+export default function DashboardPage() {
+  const [salesToday, setSalesToday] = useState(0);
+  const [ordersCount, setOrdersCount] = useState(0);
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [lowStockItems, setLowStockItems] = useState<LowStockProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSessionOpen, setIsSessionOpen] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setLogs(prev => [...prev.slice(-10), `> ESPERANDO COMANDO_ ${new Date().toLocaleTimeString()}`]);
-    }, 5000);
-    return () => clearInterval(timer);
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000); // Auto-refresh every 30s
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchDashboardData = async () => {
+    if (!supabase) return;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 1. Fetch Sales Today
+      const { data: sales } = await supabase
+        .from('sales')
+        .select('*')
+        .gte('created_at', today.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (sales) {
+        const total = sales.reduce((acc, sale) => acc + Number(sale.total), 0);
+        setSalesToday(total);
+        setOrdersCount(sales.length);
+        setRecentSales(sales.slice(0, 5));
+      }
+
+      // 2. Fetch Low Stock
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, stock')
+        .lt('stock', 5);
+      
+      if (products) {
+        setLowStockCount(products.length);
+        setLowStockItems(products.slice(0, 5));
+      }
+
+      // 3. Check Session Status
+      const { data: session } = await supabase
+        .from('cash_sessions')
+        .select('id')
+        .is('closed_at', null)
+        .single();
+      
+      setIsSessionOpen(!!session);
+
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Shell>
       <div className="grid grid-cols-12 gap-6 pb-24">
-        {/* Stats Section */}
+        {/* Header Status */}
+        <div className="col-span-12 flex justify-between items-center bg-neutral-900/50 p-4 border-2 border-neutral-800">
+          <div className="flex items-center gap-4">
+            <div className={`w-3 h-3 rounded-full animate-pulse ${isSessionOpen ? 'bg-secondary-neon' : 'bg-primary-neon'}`} />
+            <h2 className="text-sm font-black uppercase tracking-widest text-white">
+              SISTEMA {isSessionOpen ? 'OPERATIVO' : 'EN ESPERA'} - {format(new Date(), 'dd/MM/yyyy')}
+            </h2>
+          </div>
+          <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+            {isSessionOpen ? 'CAJA ABIERTA' : 'INICIAR SESIÓN PARA VENDER'}
+          </span>
+        </div>
+
+        {/* Main Stats */}
         <section className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard label="Ventas Totales (Hoy)" value="1,248.50" unit="CRÉDITOS" color="#00FFFF" progress={75} />
-          <StatCard label="Ítems Procesados" value="342" unit="UNIDADES" color="#FF007F" progress={45} />
-          <StatCard label="Estabilidad del Sistema" value="99.9" unit="% ESTABLE" color="#d7ca00" progress={99.9} />
+          <StatCard 
+            label="Ventas Hoy" 
+            value={salesToday.toLocaleString()} 
+            unit="COP" 
+            color="#00FFFF" 
+            icon={TrendingUp}
+          />
+          <StatCard 
+            label="Órdenes Totales" 
+            value={ordersCount.toString()} 
+            unit="TICKETS" 
+            color="#FF007F" 
+            icon={CreditCard}
+          />
+          <StatCard 
+            label="Alertas de Inventario" 
+            value={lowStockCount.toString()} 
+            unit="PRODUCTOS" 
+            color="#d7ca00" 
+            icon={AlertTriangle}
+          />
         </section>
 
-        {/* Quick Actions & Live Feed */}
+        {/* Quick Actions */}
         <div className="col-span-12 lg:col-span-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <QuickActionButton icon={PlusCircle} label="NUEVA_VENTA" color="#FF007F" bgColor="#3f001a" iconFill href="/pos" />
-            <QuickActionButton icon={PackagePlus} label="AGREGAR_PRODUCTO" color="#00FFFF" bgColor="black" href="/inventory" />
-            <QuickActionButton icon={BarChart} label="REPORTES" color="#d7ca00" bgColor="black" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <QuickActionButton 
+              icon={PlusCircle} 
+              label="Nueva Venta (POS)" 
+              color="#FF007F" 
+              bgColor="#3f001a" 
+              href="/pos" 
+            />
+            <QuickActionButton 
+              icon={PackagePlus} 
+              label="Gestión de Inventario" 
+              color="#00FFFF" 
+              bgColor="black" 
+              href="/inventory" 
+            />
           </div>
 
-          <section className="bg-neutral-900/40 border-2 border-neutral-800 p-4">
+          {/* Live Sales Feed */}
+          <section className="bg-black border-4 border-neutral-900 p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-secondary-neon flex items-center gap-2 tracking-widest uppercase">
-                <Radio size={20} className="animate-pulse" /> FEED_EN_VIVO
+              <h3 className="text-lg font-black text-secondary-neon flex items-center gap-2 tracking-widest uppercase italic">
+                <Radio size={20} className="animate-pulse" /> Registro de Ventas Recientes
               </h3>
-              <span className="text-[10px] font-bold text-neutral-500 tracking-widest">ESTADO: OPERATIVO</span>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <AnimatePresence mode="popLayout">
-                {transactions.map((trx) => (
-                  <FeedItem key={trx.id} transaction={trx} />
-                ))}
+                {recentSales.length > 0 ? (
+                  recentSales.map((sale) => (
+                    <motion.div 
+                      key={sale.id}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      className="flex items-center justify-between p-4 bg-neutral-900/50 border-l-4 border-secondary-neon hover:bg-neutral-800 transition-all"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-neutral-500 font-mono uppercase">#{sale.id.slice(0,8)}</span>
+                        <span className="text-xs font-bold text-white uppercase">{sale.payment_method}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-secondary-neon font-black italic">${Number(sale.total).toLocaleString()}</div>
+                        <div className="text-[10px] text-neutral-600 font-mono">{format(new Date(sale.created_at), 'HH:mm:ss')}</div>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-neutral-700 font-black uppercase italic tracking-widest border-2 border-dashed border-neutral-800">
+                    No hay ventas registradas hoy
+                  </div>
+                )}
               </AnimatePresence>
             </div>
           </section>
         </div>
 
-        {/* Sidebar Info Panels */}
+        {/* Right Panel: Alerts & Audit */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
-          {/* Operator Card */}
-          <div className="bg-black border-4 border-neutral-800 p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2 bg-neutral-900 border-b-2 border-l-2 border-neutral-800">
-              <span className="text-[10px] font-bold text-secondary-neon animate-pulse uppercase">● EN LÍNEA</span>
+          {/* Low Stock Alerts */}
+          <div className="bg-black border-4 border-tertiary-neon p-6">
+            <h4 className="text-sm font-black text-tertiary-neon uppercase tracking-widest mb-4 flex items-center gap-2">
+              <AlertTriangle size={16} /> Alertas de Stock Bajo
+            </h4>
+            <div className="space-y-2">
+              {lowStockItems.length > 0 ? (
+                lowStockItems.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center p-2 bg-primary-neon/5 border border-primary-neon/20">
+                    <span className="text-xs font-bold text-white uppercase">{item.name}</span>
+                    <span className="bg-primary-neon text-black text-[10px] font-black px-2 py-0.5">
+                      {item.stock} UNID
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[10px] text-neutral-600 uppercase font-bold text-center py-4 italic">
+                  Todo el inventario está en orden
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-6 mb-6">
-              <div className="w-24 h-24 border-4 border-primary-neon p-1 relative overflow-hidden">
-                <img 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmsYQf_CZfY9VCUo41fF5DrjIEz_FMLKfWchvJteRKTsgjgRVongMIMA5rp779eHscJVfgO1gAO7wngzQjKFnmR3hIUqKlWD-nKExz33pGwIXbBO12nB-PdEZddQYHdomb-mK9Sf8C6NqAxYAbLpKXuKStSiHsuu0yxgE1OWYg8MtzHjlSf09_xyqzeduUuvk3MQ9Tep5W-cEp77RpCklqH31FkTE9DNZQ4EfXGHJelxJZnRQ_VOGXFgD7pyWqdBYbySGRPfZ3ILPZ" 
-                  alt="Operator Avatar" 
-                  className="w-full h-full object-cover grayscale brightness-75 sepia-[0.3] hue-rotate-[280deg] contrast-150"
-                />
-                <div className="absolute inset-0 bg-primary-neon/10 pointer-events-none" />
-              </div>
-              <div>
-                <h4 className="text-lg font-black text-primary-neon tracking-tight uppercase">OPERADOR_01</h4>
-                <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Turno: NOCHE_WLK</p>
-              </div>
-            </div>
+            {lowStockCount > 5 && (
+              <p className="mt-4 text-[10px] text-primary-neon text-center font-bold animate-pulse">
+                +{lowStockCount - 5} PRODUCTOS MÁS EN ALERTA
+              </p>
+            )}
+          </div>
+
+          {/* Quick Stats Panel */}
+          <div className="bg-neutral-900/80 border-2 border-neutral-800 p-6">
+            <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] mb-4">Métricas Rápidas</h4>
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-neutral-500 uppercase tracking-widest">TIEMPO_TURNO</span>
-                <span className="font-mono text-secondary-neon text-xl tracking-widest">04:22:15</span>
+              <div>
+                <div className="flex justify-between text-[10px] font-bold uppercase mb-1">
+                  <span className="text-neutral-400">Objetivo Diario</span>
+                  <span className="text-secondary-neon">{(salesToday / 500000 * 100).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 bg-black border border-neutral-800">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((salesToday / 500000) * 100, 100)}%` }}
+                    className="h-full bg-secondary-neon shadow-[0_0_10px_#00FFFF]" 
+                  />
+                </div>
               </div>
-              <div className="w-full h-2 bg-neutral-900 border border-neutral-800">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: '55%' }}
-                  className="h-full bg-secondary-neon shadow-[0_0_10px_#00FFFF]" 
-                />
+              <div className="pt-4 border-t border-neutral-800">
+                <p className="text-[9px] text-neutral-500 font-mono uppercase italic tracking-widest">
+                  Sistema sincronizado con la nube <br/>
+                  Ping: 14ms | DB: Conectada
+                </p>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-neutral-400 uppercase tracking-widest">PROGRESO_XP</span>
-                <span className="text-primary-neon font-bold">850 / 1000</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Combo Meter */}
-          <div className="bg-neutral-900/60 border-2 border-black p-4 flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-on-surface uppercase tracking-[0.2em]">COMBO_SESIÓN</span>
-              <span className="font-black italic text-2xl text-tertiary-neon animate-bounce">x12</span>
-            </div>
-            <div className="h-8 w-full bg-black border-2 border-neutral-800 p-1">
-              <motion.div 
-                animate={{ width: ['70%', '82%', '75%', '85%'] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="h-full bg-gradient-to-r from-secondary-neon via-primary-neon to-pink-600 shadow-[0_0_15px_rgba(255,0,127,0.3)]" 
-                style={{ width: '85%' }}
-              />
-            </div>
-            <p className="text-[9px] text-neutral-500 text-center font-mono italic uppercase tracking-widest">MANTÉN EL RITMO PARA MÁXIMOS CRÉDITOS</p>
-          </div>
-
-          {/* Logs */}
-          <div className="bg-black border-2 border-neutral-900 font-mono text-[9px] p-4 text-cyan-800 h-48 overflow-hidden relative">
-            <div className="space-y-1">
-              {logs.map((log, i) => (
-                <p key={i} className={i === logs.length - 1 ? 'animate-pulse' : ''}>{log}</p>
-              ))}
             </div>
           </div>
         </div>

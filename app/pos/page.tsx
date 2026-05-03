@@ -116,17 +116,22 @@ export default function POSPage() {
   useEffect(() => {
     // Global barcode listener
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if it's a modifier key
+      if (e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift') return;
+
       const now = Date.now();
       
-      // If time between keys is short, it's likely a scanner
-      if (now - lastKeyTime.current > 100) {
+      // If time between keys is short (< 50ms), it's definitely a scanner
+      // If it's slow, we reset the buffer
+      if (now - lastKeyTime.current > 50) {
         scanBuffer.current = "";
       }
       
       lastKeyTime.current = now;
 
       if (e.key === 'Enter') {
-        if (scanBuffer.current.length > 2) {
+        if (scanBuffer.current.length >= 3) {
+          e.preventDefault(); // Stop form submissions
           handleBarcodeScan(scanBuffer.current);
           scanBuffer.current = "";
         }
@@ -135,9 +140,9 @@ export default function POSPage() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [products]); // Barcode needs latest products list
+    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [products]); 
 
   const fetchSession = async () => {
     if (!supabase) return;

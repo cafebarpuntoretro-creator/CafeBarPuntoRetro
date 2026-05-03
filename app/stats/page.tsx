@@ -110,8 +110,10 @@ export default function StatsPage() {
 
     if (items) {
       const prodMap: { [key: string]: number } = {};
-      items.forEach(i => {
-        const name = i.products?.name || "Desconocido";
+      items.forEach((i: any) => {
+        // Handle case where products might be an array or object
+        const productData = Array.isArray(i.products) ? i.products[0] : i.products;
+        const name = productData?.name || "Desconocido";
         prodMap[name] = (prodMap[name] || 0) + Number(i.quantity);
       });
       const sorted = Object.entries(prodMap)

@@ -264,6 +264,9 @@ export default function POSPage() {
                     type="number" 
                     value={initialBase}
                     onChange={(e) => setInitialBase(parseFloat(e.target.value) || 0)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleOpenSession();
+                    }}
                     className="bg-neutral-900 border-2 border-neutral-800 p-4 text-2xl font-mono text-white outline-none focus:border-secondary-neon"
                     autoFocus
                   />

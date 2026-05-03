@@ -617,34 +617,34 @@ export default function POSPage() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-12 gap-8 h-[calc(100vh-140px)]">
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 md:gap-8 h-auto lg:h-[calc(100vh-140px)]">
         {/* Catálogo */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col overflow-hidden">
-          <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="order-2 lg:order-1 lg:col-span-8 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0">
+          <header className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-secondary-neon font-black text-3xl italic uppercase tracking-tighter">Terminal de Ventas</h1>
-              <div className="flex items-center gap-4">
-                <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                  <Barcode size={12} /> Lector activo
+              <h1 className="text-secondary-neon font-black text-xl md:text-3xl italic uppercase tracking-tighter">Ventas</h1>
+              <div className="flex items-center gap-3">
+                <p className="text-[8px] md:text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-1">
+                  <Barcode size={10} /> Lector OK
                 </p>
                 <span className="text-neutral-800">|</span>
                 <button 
                   onClick={prepareCloseSession}
-                  className="text-[10px] font-black text-primary-neon uppercase hover:underline"
+                  className="text-[8px] md:text-[10px] font-black text-primary-neon uppercase hover:underline"
                 >
-                  Cerrar Caja [X]
+                  Cerrar Caja
                 </button>
               </div>
             </div>
             
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={14} />
               <input 
                 type="text"
-                placeholder="BUSCAR PRODUCTO O SCAN..."
+                placeholder="BUSCAR..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-black border-2 border-neutral-900 p-3 pl-10 text-[10px] font-black uppercase focus:border-secondary-neon outline-none w-full md:w-64"
+                className="bg-black border-2 border-neutral-900 p-2 pl-9 text-[10px] font-black uppercase focus:border-secondary-neon outline-none w-full sm:w-48"
               />
             </div>
           </header>
@@ -719,10 +719,10 @@ export default function POSPage() {
         </div>
 
         {/* Carrito / Checkout */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col h-full">
-          <div className="bg-black border-4 border-primary-neon p-6 flex flex-col h-full shadow-[8px_8px_0px_0px_rgba(255,0,127,0.2)]">
-            <h3 className="text-primary-neon font-black text-sm uppercase mb-6 flex items-center gap-3">
-              <ShoppingCart size={20} /> Carrito de Venta
+        <div className="order-1 lg:order-2 lg:col-span-4 flex flex-col h-auto lg:h-full">
+          <div className="bg-black border-4 border-primary-neon p-4 md:p-6 flex flex-col h-full shadow-[4px_4px_0px_0px_rgba(255,0,127,0.2)] lg:shadow-[8px_8px_0px_0px_rgba(255,0,127,0.2)]">
+            <h3 className="text-primary-neon font-black text-xs md:text-sm uppercase mb-4 md:mb-6 flex items-center gap-3">
+              <ShoppingCart size={18} /> Carrito
             </h3>
             
             <div className="flex-1 overflow-y-auto mb-6 space-y-2 custom-scrollbar">

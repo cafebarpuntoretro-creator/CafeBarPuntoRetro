@@ -222,57 +222,57 @@ export default function StatsPage() {
     <Shell>
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-primary-neon font-black text-4xl italic uppercase tracking-tighter">Panel de Inteligencia</h1>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Auditoría y Rendimiento {new Date().getFullYear()}</p>
+          <h1 className="text-primary-neon font-black text-2xl md:text-4xl italic uppercase tracking-tighter">Inteligencia</h1>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Auditoría {new Date().getFullYear()}</p>
         </div>
         
         {/* Generador de Reporte Diario */}
-        <div className="bg-neutral-900 border-2 border-neutral-800 p-4 flex items-center gap-4 arcade-shadow-cyan">
-          <div className="flex flex-col">
-            <label className="text-[8px] font-black text-secondary-neon uppercase mb-1">Reporte por Día</label>
+        <div className="bg-neutral-900 border-2 border-neutral-800 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 arcade-shadow-cyan">
+          <div className="flex flex-col flex-1">
+            <label className="text-[8px] font-black text-secondary-neon uppercase mb-1">Día Específico</label>
             <input 
               type="date" 
               value={selectedDay}
               onChange={(e) => setSelectedDay(e.target.value)}
-              className="bg-black border border-neutral-700 text-xs text-white p-1 outline-none focus:border-secondary-neon"
+              className="bg-black border border-neutral-700 text-xs text-white p-2 outline-none focus:border-secondary-neon"
             />
           </div>
           <button 
             onClick={fetchDailyReport}
-            className="bg-secondary-neon text-black font-black text-[10px] px-4 py-2 uppercase hover:scale-105 transition-transform"
+            className="bg-secondary-neon text-black font-black text-[10px] px-4 py-3 sm:py-2 uppercase hover:scale-105 transition-transform"
           >
-            Descargar PDF
+            Reporte Diario
           </button>
         </div>
       </header>
 
       {/* Tarjetas de Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-pink">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-4 md:p-6 arcade-shadow-pink">
           <div className="flex justify-between items-start mb-4">
-            <div className="bg-pink-500/10 p-3 rounded-xl"><DollarSign className="text-secondary-neon" size={24} /></div>
-            <span className="text-[10px] font-black text-secondary-neon uppercase flex items-center gap-1"><ArrowUpRight size={12} /> +12%</span>
+            <div className="bg-pink-500/10 p-2 md:p-3 rounded-xl"><DollarSign className="text-secondary-neon" size={20} /></div>
+            <span className="text-[9px] font-black text-secondary-neon uppercase flex items-center gap-1"><ArrowUpRight size={10} /> +12%</span>
           </div>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Ventas del Mes</p>
-          <h2 className="text-3xl font-black text-white font-mono">${totals.month.toLocaleString()}</h2>
+          <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Mes</p>
+          <h2 className="text-xl md:text-3xl font-black text-white font-mono">${totals.month.toLocaleString()}</h2>
         </motion.div>
 
-        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-cyan">
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-4 md:p-6 arcade-shadow-cyan">
           <div className="flex justify-between items-start mb-4">
-            <div className="bg-cyan-500/10 p-3 rounded-xl"><Package className="text-primary-neon" size={24} /></div>
-            <span className="text-[10px] font-black text-primary-neon uppercase flex items-center gap-1"><TrendingUp size={12} /> OK</span>
+            <div className="bg-cyan-500/10 p-2 md:p-3 rounded-xl"><Package className="text-primary-neon" size={20} /></div>
+            <span className="text-[9px] font-black text-primary-neon uppercase flex items-center gap-1"><TrendingUp size={10} /> OK</span>
           </div>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Órdenes Totales (Año)</p>
-          <h2 className="text-3xl font-black text-white font-mono">{totals.orders}</h2>
+          <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Tickets</p>
+          <h2 className="text-xl md:text-3xl font-black text-white font-mono">{totals.orders}</h2>
         </motion.div>
 
-        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-pink">
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-4 md:p-6 sm:col-span-2 lg:col-span-1 arcade-shadow-pink">
           <div className="flex justify-between items-start mb-4">
-            <div className="bg-purple-500/10 p-3 rounded-xl"><TrendingUp className="text-purple-400" size={24} /></div>
-            <span className="text-[10px] font-black text-purple-400 uppercase flex items-center gap-1"><ArrowUpRight size={12} /> ESTABLE</span>
+            <div className="bg-purple-500/10 p-2 md:p-3 rounded-xl"><TrendingUp className="text-purple-400" size={20} /></div>
+            <span className="text-[9px] font-black text-purple-400 uppercase flex items-center gap-1">ESTABLE</span>
           </div>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Balance Anual</p>
-          <h2 className="text-3xl font-black text-white font-mono">${totals.year.toLocaleString()}</h2>
+          <p className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Balance Año</p>
+          <h2 className="text-xl md:text-3xl font-black text-white font-mono">${totals.year.toLocaleString()}</h2>
         </motion.div>
       </div>
 

@@ -44,14 +44,14 @@ const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: st
     <motion.a
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className={`flex items-center gap-4 p-4 mx-2 my-1 border-2 transition-all cursor-pointer group ${
+      className={`flex items-center justify-center lg:justify-start gap-4 p-4 lg:mx-2 my-1 border-2 transition-all cursor-pointer group ${
         active 
           ? 'bg-secondary-neon text-black border-black arcade-shadow-pink' 
           : 'text-secondary-neon border-transparent hover:border-secondary-neon hover:bg-neutral-900/50'
       }`}
     >
       <Icon size={20} className={active ? 'text-black' : 'text-secondary-neon'} />
-      <span className="font-bold text-xs tracking-widest uppercase">{label}</span>
+      <span className="font-bold text-xs tracking-widest uppercase hidden lg:block">{label}</span>
     </motion.a>
   </Link>
 );
@@ -107,19 +107,24 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-void text-on-background">
+    <div className="min-h-screen bg-void text-on-background overflow-x-hidden">
       <div className="scanline-overlay" />
       
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-20 bg-black border-b-4 border-neutral-900 shadow-[0_4px_0_0_#FF007F]">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-black italic text-primary-neon drop-shadow-[3px_3px_0px_#00FFFF] uppercase tracking-widest">
-            PUNTO RETRO <span className="text-secondary-neon">POS</span>
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-6 h-16 md:h-20 bg-black border-b-4 border-neutral-900 shadow-[0_4px_0_0_#FF007F]">
+        <div className="flex items-center gap-2 md:gap-4">
+          <h1 className="text-sm md:text-2xl font-black italic text-primary-neon drop-shadow-[2px_2px_0px_#00FFFF] uppercase tracking-widest truncate">
+            PUNTO <span className="hidden xs:inline">RETRO</span> <span className="text-secondary-neon">POS</span>
           </h1>
-          <RealTimeClock />
+          <div className="hidden sm:block">
+            <RealTimeClock />
+          </div>
         </div>
-        <div className="flex items-center gap-6">
+        
+        <div className="flex items-center gap-2 md:gap-6">
           {/* Campana de Notificaciones */}
           <div className="relative">
             <button 
@@ -129,11 +134,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   setNotifications(prev => prev.map(n => ({...n, read: true})));
                 }
               }}
-              className="relative cursor-pointer hover:scale-110 transition-transform outline-none"
+              className="relative p-2 cursor-pointer hover:scale-110 transition-transform outline-none"
             >
-              <Bell size={24} className={showHub ? "text-primary-neon" : "text-secondary-neon"} />
+              <Bell size={20} className={showHub ? "text-primary-neon" : "text-secondary-neon"} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary-neon rounded-full animate-pulse shadow-[0_0_10px_#00FFFF]" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-primary-neon rounded-full animate-pulse shadow-[0_0_10px_#00FFFF]" />
               )}
             </button>
 
@@ -144,11 +149,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-6 w-80 bg-black border-4 border-neutral-900 arcade-shadow-cyan z-[60] overflow-hidden"
+                  className="fixed md:absolute right-4 md:right-0 mt-4 w-[calc(100vw-32px)] md:w-80 bg-black border-4 border-neutral-900 arcade-shadow-cyan z-[60] overflow-hidden"
                 >
                   <div className="p-4 border-b-2 border-neutral-900 flex justify-between items-center bg-neutral-900/20">
                     <span className="text-[10px] font-black uppercase text-primary-neon tracking-widest">Bitácora de Sistema</span>
-                    <span className="text-[8px] font-bold text-neutral-600">[ALT+N]</span>
                   </div>
                   <div className="max-h-96 overflow-y-auto divide-y divide-neutral-900">
                     {notifications.length === 0 ? (
@@ -164,7 +168,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <p className="text-[10px] text-white font-bold mb-1 leading-tight">{n.message}</p>
-                        <p className="text-[8px] text-neutral-600 font-mono">{n.time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        <p className="text-[8px] text-neutral-600 font-mono">{format(n.time, 'HH:mm')}</p>
                       </div>
                     ))}
                   </div>
@@ -173,62 +177,55 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </AnimatePresence>
           </div>
 
-          <div className="flex items-center gap-3 border-2 border-secondary-neon p-2 bg-neutral-900">
-            <User size={20} className="text-secondary-neon" />
-            <span className="font-bold text-[10px] text-secondary-neon tracking-widest">ADMIN_ROOT</span>
+          <div className="hidden lg:flex items-center gap-3 border-2 border-secondary-neon p-2 bg-neutral-900">
+            <User size={16} className="text-secondary-neon" />
+            <span className="font-bold text-[9px] text-secondary-neon tracking-widest">ADMIN</span>
           </div>
+
           <button 
             onClick={async () => {
               await supabase?.auth.signOut();
               window.location.href = "/login";
             }}
-            className="text-[10px] font-black text-primary-neon hover:text-white uppercase tracking-widest border-2 border-primary-neon px-3 py-2 bg-black arcade-shadow-cyan active:translate-y-1 transition-all"
+            className="text-[9px] font-black text-primary-neon hover:text-white uppercase tracking-widest border-2 border-primary-neon px-2 md:px-3 py-1.5 md:py-2 bg-black arcade-shadow-cyan active:translate-y-1 transition-all"
           >
             SALIR
           </button>
         </div>
       </header>
 
-      {/* Floating Toast Notification */}
+      {/* Floating Toast Notification - Adjusted for mobile */}
       <AnimatePresence>
         {toast && (
           <motion.div 
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
-            className={`fixed top-24 right-6 z-[100] border-4 p-4 min-w-[280px] arcade-shadow-pink bg-black ${
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -100 }}
+            className={`fixed top-20 md:top-24 left-4 right-4 md:left-auto md:right-6 z-[100] border-4 p-4 md:min-w-[280px] arcade-shadow-pink bg-black ${
               toast.type === 'alert' ? 'border-primary-neon' : 'border-secondary-neon'
             }`}
           >
             <div className="flex items-start gap-4">
               <div className={toast.type === 'alert' ? 'text-primary-neon' : 'text-secondary-neon'}>
-                {toast.type === 'alert' ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+                {toast.type === 'alert' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
               </div>
-              <div>
-                <h4 className={`text-[10px] font-black uppercase mb-1 ${toast.type === 'alert' ? 'text-primary-neon' : 'text-secondary-neon'}`}>
+              <div className="flex-1">
+                <h4 className={`text-[9px] font-black uppercase mb-0.5 ${toast.type === 'alert' ? 'text-primary-neon' : 'text-secondary-neon'}`}>
                   {toast.title}
                 </h4>
-                <p className="text-[11px] font-bold text-white uppercase leading-tight">{toast.message}</p>
+                <p className="text-[10px] font-bold text-white uppercase leading-tight">{toast.message}</p>
               </div>
               <button onClick={() => setToast(null)} className="text-neutral-700 hover:text-white">
-                <X size={16} />
+                <X size={14} />
               </button>
-            </div>
-            <div className={`mt-3 h-1 w-full bg-neutral-900 rounded-full overflow-hidden`}>
-              <motion.div 
-                initial={{ width: "100%" }}
-                animate={{ width: "0%" }}
-                transition={{ duration: 4, ease: "linear" }}
-                className={`h-full ${toast.type === 'alert' ? 'bg-primary-neon' : 'bg-secondary-neon'}`}
-              />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-20 h-[calc(100vh-80px)] w-64 bg-black border-r-4 border-neutral-900 flex flex-col py-4 overflow-y-auto z-40">
-        <div className="px-6 py-4 border-b-4 border-neutral-900 mb-4">
+      {/* Sidebar - Hidden on mobile, shown as bottom nav or drawer */}
+      <aside className="hidden md:flex fixed left-0 top-20 h-[calc(100vh-80px)] w-20 lg:w-64 bg-black border-r-4 border-neutral-900 flex-col py-4 overflow-y-auto z-40 transition-all">
+        <div className="px-4 lg:px-6 py-4 border-b-4 border-neutral-900 mb-4 hidden lg:block">
           <h2 className="text-primary-neon font-black text-sm tracking-tighter uppercase">OPERADOR_01</h2>
           <p className="text-secondary-neon text-[10px] font-bold opacity-70 tracking-widest">NIVEL_99_ADMIN</p>
         </div>
@@ -237,15 +234,33 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarItem icon={Boxes} label="INVENTARIO" href="/inventory" active={pathname === "/inventory"} />
           <SidebarItem icon={ReceiptText} label="NUEVA VENTA" href="/pos" active={pathname === "/pos"} />
           <SidebarItem icon={BarChart} label="ESTADÍSTICAS" href="/stats" active={pathname === "/stats"} />
-          <SidebarItem icon={History} label="HISTORIAL DE CIERRES" href="/cash-history" active={pathname === "/cash-history"} />
+          <SidebarItem icon={History} label="HISTORIAL" href="/cash-history" active={pathname === "/cash-history"} />
           <SidebarItem icon={Settings} label="SISTEMA" href="/settings" active={pathname === "/settings"} />
         </nav>
       </aside>
 
-      {/* Main Content */}
-      <main className="ml-64 mt-20 p-6">
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full h-16 bg-black border-t-4 border-neutral-900 z-50 flex justify-around items-center px-2">
+        {[
+          { icon: LayoutDashboard, href: "/", label: "INICIO" },
+          { icon: Boxes, href: "/inventory", label: "STOCK" },
+          { icon: ReceiptText, href: "/pos", label: "VENTA" },
+          { icon: BarChart, href: "/stats", label: "STATS" },
+          { icon: Settings, href: "/settings", label: "MÁS" },
+        ].map((item) => (
+          <Link key={item.href} href={item.href} className={`flex flex-col items-center justify-center gap-1 ${pathname === item.href ? 'text-primary-neon' : 'text-neutral-500'}`}>
+            <item.icon size={20} />
+            <span className="text-[8px] font-black uppercase">{item.label}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {/* Main Content - Adjusted margin */}
+      <main className="md:ml-20 lg:ml-64 mt-16 md:mt-20 p-4 md:p-6 pb-24 md:pb-6 transition-all">
         {children}
       </main>
     </div>
+  );
+}
   );
 }

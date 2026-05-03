@@ -399,7 +399,7 @@ export default function POSPage() {
         ['TOTAL GENERAL', `$${(closing.expectedCash + closing.expectedElectronic).toLocaleString()}`, `$${(closing.real + closing.expectedElectronic).toLocaleString()}`, `$${(closing.real - closing.expectedCash).toLocaleString()}`]
       ],
       theme: 'striped',
-      headStyles: { fillStyle: 'F', fillColor: [255, 0, 127] }
+      headStyles: { fillColor: [255, 0, 127] }
     });
 
     // 4. Detailed Sales Table

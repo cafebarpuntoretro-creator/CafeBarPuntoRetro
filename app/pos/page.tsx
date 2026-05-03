@@ -195,6 +195,18 @@ export default function POSPage() {
       alert("¡Sin Stock! No hay unidades disponibles de " + p.name);
       return;
     }
+
+    // Low stock alert check (threshold 5)
+    if (p.stock <= 5) {
+      window.dispatchEvent(new CustomEvent('pos-notify', {
+        detail: {
+          title: 'Stock Crítico',
+          message: `El producto ${p.name} tiene solo ${p.stock} unidades.`,
+          type: 'alert'
+        }
+      }));
+    }
+
     setCart(prev => {
       const existing = prev.find(item => item.id === p.id);
       if (existing) {
@@ -279,6 +291,16 @@ export default function POSPage() {
     }
 
     alert(`¡Venta completada!\nTotal: $${total.toFixed(2)}\nMétodo: ${paymentMethod}`);
+    
+    // Dispatch Global Notification
+    window.dispatchEvent(new CustomEvent('pos-notify', {
+      detail: {
+        title: 'Venta Exitosa',
+        message: `Orden completada por $${total.toFixed(0)} vía ${paymentMethod}`,
+        type: 'info'
+      }
+    }));
+
     setCart([]);
     setDiscount(0);
     setTip(0);

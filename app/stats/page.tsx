@@ -25,7 +25,7 @@ interface Sale {
     price: number;
     products: {
       name: string;
-    }
+    } | { name: string }[] | null;
   }[];
 }
 
@@ -159,11 +159,16 @@ export default function StatsPage() {
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {sale.sale_items?.map((item, idx) => (
-                          <span key={idx} className="text-[10px] text-neutral-500 font-bold">
-                            {item.quantity}x {item.products?.name}{idx < sale.sale_items.length - 1 ? ',' : ''}
-                          </span>
-                        ))}
+                        {sale.sale_items?.map((item, idx) => {
+                          const productName = Array.isArray(item.products) 
+                            ? item.products[0]?.name 
+                            : item.products?.name;
+                          return (
+                            <span key={idx} className="text-[10px] text-neutral-500 font-bold">
+                              {item.quantity}x {productName}{idx < sale.sale_items.length - 1 ? ',' : ''}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

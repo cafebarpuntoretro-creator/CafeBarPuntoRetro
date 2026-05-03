@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { Gamepad2, Lock, User } from "lucide-react";
+import { Lock, User } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,7 +33,6 @@ export default function LoginPage() {
       if (error) {
         setError(`ERROR: ${error.message.toUpperCase()}`);
       } else if (data.user) {
-        // Use a hard redirect to ensure the middleware picks up the session
         window.location.href = "/";
         return;
       }
@@ -45,26 +44,34 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-void flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      <div className="scanline-overlay" />
-      
-      {/* Background Decor */}
-      <div className="absolute top-1/4 -left-20 w-64 h-64 bg-primary-neon/10 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-1/4 -right-20 w-64 h-64 bg-secondary-neon/10 rounded-full blur-[120px] animate-pulse" />
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Video */}
+      <video 
+        autoPlay 
+        loop 
+        muted 
+        playsInline 
+        className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 grayscale-[0.5] brightness-50"
+      >
+        <source src="/images/logovideo.mp4" type="video/mp4" />
+      </video>
 
+      <div className="scanline-overlay z-10" />
+      
       <motion.div 
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md bg-black border-4 border-neutral-900 p-8 arcade-shadow-pink relative z-10"
+        className="w-full max-w-md bg-black/80 backdrop-blur-md border-4 border-primary-neon p-8 arcade-shadow-pink relative z-20"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-neutral-900 flex items-center justify-center mb-4 border-2 border-primary-neon">
-            <Gamepad2 className="text-primary-neon" size={32} />
-          </div>
-          <h1 className="text-2xl font-black italic text-primary-neon tracking-widest uppercase">
-            INSERT <span className="text-secondary-neon">COIN</span>
-          </h1>
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mt-2">Acceso al Sistema POS</p>
+          <motion.img 
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+            src="/images/Logo.jpeg" 
+            alt="Punto Retro Logo" 
+            className="w-48 h-auto mb-4 border-2 border-primary-neon p-1 bg-black arcade-shadow-cyan"
+          />
+          <p className="text-[10px] font-bold text-secondary-neon uppercase tracking-[0.4em] mt-2 animate-pulse">SISTEMA POS ACTIVO</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -78,7 +85,7 @@ export default function LoginPage() {
               placeholder="USER_ID@RETRO"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-neutral-900 border-2 border-neutral-800 p-4 text-sm font-mono focus:border-secondary-neon outline-none text-white placeholder:text-neutral-700"
+              className="w-full bg-black/50 border-2 border-neutral-800 p-4 text-sm font-mono focus:border-secondary-neon outline-none text-white placeholder:text-neutral-700 transition-all"
             />
           </div>
 
@@ -92,7 +99,7 @@ export default function LoginPage() {
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-neutral-900 border-2 border-neutral-800 p-4 text-sm font-mono focus:border-secondary-neon outline-none text-white placeholder:text-neutral-700"
+              className="w-full bg-black/50 border-2 border-neutral-800 p-4 text-sm font-mono focus:border-secondary-neon outline-none text-white placeholder:text-neutral-700 transition-all"
             />
           </div>
 
@@ -107,23 +114,23 @@ export default function LoginPage() {
           )}
 
           <motion.button 
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 20px #FF007F' }}
             whileTap={{ scale: 0.98 }}
             disabled={loading}
-            className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-cyan disabled:opacity-50"
+            className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-cyan disabled:opacity-50 transition-all"
           >
             {loading ? "CARGANDO..." : "INGRESAR AL SISTEMA"}
           </motion.button>
         </form>
 
-        <div className="mt-8 pt-8 border-t-2 border-neutral-900 text-center">
-          <p className="text-[8px] font-mono text-neutral-600 uppercase tracking-widest animate-pulse">
-            SISTEMA OPERATIVO PUNTO_RETRO v1.0.4
+        <div className="mt-8 pt-6 border-t-2 border-neutral-900 text-center">
+          <p className="text-[8px] font-mono text-neutral-600 uppercase tracking-widest">
+            CONTROL DE ACCESO V1.0.5
           </p>
         </div>
       </motion.div>
 
-      <div className="mt-8 text-neutral-700 text-[10px] font-bold uppercase tracking-[0.3em]">
+      <div className="absolute bottom-8 text-neutral-500 text-[10px] font-bold uppercase tracking-[0.5em] z-20">
         © 2026 PUNTO RETRO CAFE BAR
       </div>
     </div>

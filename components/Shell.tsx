@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: string, href: string, active: boolean }) => (
   <Link href={href} passHref legacyBehavior>
@@ -54,6 +55,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <User size={20} className="text-secondary-neon" />
             <span className="font-bold text-[10px] text-secondary-neon tracking-widest">ADMIN_ROOT</span>
           </div>
+          <button 
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/login";
+            }}
+            className="text-[10px] font-black text-primary-neon hover:text-white uppercase tracking-widest border-2 border-primary-neon px-3 py-2 bg-black arcade-shadow-cyan active:translate-y-1 transition-all"
+          >
+            SALIR
+          </button>
         </div>
       </header>
 

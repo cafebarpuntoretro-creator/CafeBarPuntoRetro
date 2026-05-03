@@ -11,7 +11,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Trash2
+  Trash2,
+  Share2
 } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion } from "motion/react";
@@ -26,6 +27,11 @@ export default function SettingsPage() {
     businessName: "Cafe Bar Punto Retro",
     address: "Calle Retro #123",
     phone: "300 000 0000",
+    nit: "901.234.567-8",
+    legalRep: "JUAN PABLO POSADA",
+    tiktok: "@puntoretro_bar",
+    instagram: "@puntoretro_retro",
+    facebook: "Cafe Bar Punto Retro",
     lowStockThreshold: 5,
     defaultTip: 10,
     enableStockDecrement: true,
@@ -34,8 +40,6 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setLoading(true);
-    // In a real app, we would save to a 'settings' table in Supabase
-    // For now, we simulate success and save to localStorage
     localStorage.setItem('pos_config', JSON.stringify(config));
     
     setTimeout(() => {
@@ -53,13 +57,13 @@ export default function SettingsPage() {
   return (
     <Shell>
       <header className="mb-8">
-        <h1 className="text-primary-neon font-black text-3xl italic uppercase tracking-tighter">Configuración del Sistema</h1>
-        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Personaliza tu experiencia de punto de venta</p>
+        <h1 className="text-primary-neon font-black text-3xl italic uppercase tracking-tighter">Configuración</h1>
+        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Ajustes globales del sistema</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Columna Izquierda: Negocio */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8 pb-24 lg:pb-0">
           <section className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-cyan">
             <h2 className="text-primary-neon font-black text-sm uppercase mb-6 flex items-center gap-2">
               <Store size={18} /> Información del Establecimiento
@@ -71,7 +75,7 @@ export default function SettingsPage() {
                   type="text" 
                   value={config.businessName}
                   onChange={e => setConfig({...config, businessName: e.target.value})}
-                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors"
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors text-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -80,7 +84,25 @@ export default function SettingsPage() {
                   type="text" 
                   value={config.phone}
                   onChange={e => setConfig({...config, phone: e.target.value})}
-                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors"
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase">NIT</label>
+                <input 
+                  type="text" 
+                  value={config.nit}
+                  onChange={e => setConfig({...config, nit: e.target.value})}
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase">Representante Legal</label>
+                <input 
+                  type="text" 
+                  value={config.legalRep}
+                  onChange={e => setConfig({...config, legalRep: e.target.value})}
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors text-sm"
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
@@ -89,7 +111,45 @@ export default function SettingsPage() {
                   type="text" 
                   value={config.address}
                   onChange={e => setConfig({...config, address: e.target.value})}
-                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors"
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-primary-neon transition-colors text-sm"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-pink">
+            <h2 className="text-secondary-neon font-black text-sm uppercase mb-6 flex items-center gap-2">
+              <Share2 size={18} /> Presencia Digital (Redes Sociales)
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase">TikTok</label>
+                <input 
+                  type="text" 
+                  value={config.tiktok}
+                  placeholder="@usuario"
+                  onChange={e => setConfig({...config, tiktok: e.target.value})}
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-secondary-neon transition-colors text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase">Instagram</label>
+                <input 
+                  type="text" 
+                  value={config.instagram}
+                  placeholder="@usuario"
+                  onChange={e => setConfig({...config, instagram: e.target.value})}
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-secondary-neon transition-colors text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase">Facebook</label>
+                <input 
+                  type="text" 
+                  value={config.facebook}
+                  placeholder="Nombre de página"
+                  onChange={e => setConfig({...config, facebook: e.target.value})}
+                  className="w-full bg-neutral-900 border-2 border-neutral-800 p-3 text-white font-bold outline-none focus:border-secondary-neon transition-colors text-sm"
                 />
               </div>
             </div>

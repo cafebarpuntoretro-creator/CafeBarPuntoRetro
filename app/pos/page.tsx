@@ -51,12 +51,11 @@ export default function POSPage() {
   const lastKeyTime = useRef(Date.now());
 
   useEffect(() => {
-    const init = async () => {
-      await fetchSession();
-      await fetchProducts();
-    };
-    init();
-    
+    fetchSession();
+    fetchProducts();
+  }, []); // Run only once on mount
+
+  useEffect(() => {
     // Global barcode listener
     const handleKeyDown = (e: KeyboardEvent) => {
       const now = Date.now();
@@ -80,7 +79,7 @@ export default function POSPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [products]); // Re-bind when products change to have latest list
+  }, [products]); // Barcode needs latest products list
 
   const fetchSession = async () => {
     if (!supabase) return;

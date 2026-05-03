@@ -18,6 +18,7 @@ import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { format } from 'date-fns';
 
 const RealTimeClock = () => {
   const [time, setTime] = useState(new Date());

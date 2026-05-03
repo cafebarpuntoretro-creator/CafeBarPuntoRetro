@@ -12,6 +12,7 @@ interface Product {
   category: string;
   price: number;
   stock: number;
+  barcode?: string;
   image_url?: string;
 }
 
@@ -26,7 +27,8 @@ export default function InventoryPage() {
     name: "",
     category: "Bebidas",
     price: 0,
-    stock: 0
+    stock: 0,
+    barcode: ""
   });
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function InventoryPage() {
       if (error) alert("Error al guardar: " + error.message);
       else {
         setShowAddForm(false);
-        setFormData({ name: "", category: "Bebidas", price: 0, stock: 0 });
+        setFormData({ name: "", category: "Bebidas", price: 0, stock: 0, barcode: "" });
         fetchProducts();
       }
     }
@@ -119,7 +121,7 @@ export default function InventoryPage() {
           onClick={() => {
             if (showAddForm) {
               setEditingId(null);
-              setFormData({ name: "", category: "Bebidas", price: 0, stock: 0 });
+              setFormData({ name: "", category: "Bebidas", price: 0, stock: 0, barcode: "" });
             }
             setShowAddForm(!showAddForm);
           }}
@@ -185,6 +187,16 @@ export default function InventoryPage() {
                     value={formData.stock}
                     onChange={(e) => setFormData({...formData, stock: parseInt(e.target.value)})}
                     className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white font-mono" 
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-secondary-neon">Código de Barras (Escanea ahora)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Escanear..."
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({...formData, barcode: e.target.value})}
+                    className="bg-black border-2 border-secondary-neon p-2 text-sm focus:bg-neutral-900 outline-none text-secondary-neon font-mono arcade-shadow-pink" 
                   />
                 </div>
               </div>

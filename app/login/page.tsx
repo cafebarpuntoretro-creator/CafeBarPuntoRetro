@@ -18,17 +18,29 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError("ERROR: CREDENCIALES INVÁLIDAS");
+    if (!supabase) {
+      setError("ERROR: CONFIGURACIÓN DE SUPABASE AUSENTE");
       setLoading(false);
-    } else {
-      router.push("/");
+      return;
     }
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError("ERROR: CREDENCIALES INVÁLIDAS");
+      } else {
+        router.push("/");
+        return; // Success
+      }
+    } catch (err) {
+      setError("ERROR: FALLO EN LA CONEXIÓN");
+    }
+    
+    setLoading(false);
   };
 
   return (

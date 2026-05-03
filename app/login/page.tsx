@@ -25,22 +25,23 @@ export default function LoginPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        setError("ERROR: CREDENCIALES INVÁLIDAS");
-      } else {
-        router.push("/");
-        return; // Success
+        setError(`ERROR: ${error.message.toUpperCase()}`);
+      } else if (data.user) {
+        // Use a hard redirect to ensure the middleware picks up the session
+        window.location.href = "/";
+        return;
       }
-    } catch (err) {
-      setError("ERROR: FALLO EN LA CONEXIÓN");
+    } catch (err: any) {
+      setError(`ERROR CRÍTICO: ${err.message || 'FALLO DE RED'}`);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

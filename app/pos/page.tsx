@@ -186,9 +186,17 @@ export default function POSPage() {
   };
 
   const addToCart = (p: Product) => {
+    if (p.stock <= 0) {
+      alert("¡Sin Stock! No hay unidades disponibles de " + p.name);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.id === p.id);
       if (existing) {
+        if (existing.qty >= p.stock) {
+          alert("No puedes vender más de las existencias disponibles (" + p.stock + ")");
+          return prev;
+        }
         return prev.map(item => item.id === p.id ? {...item, qty: item.qty + 1} : item);
       }
       return [...prev, {...p, qty: 1}];
@@ -202,7 +210,12 @@ export default function POSPage() {
   const updateQty = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === id) {
+        const product = products.find(p => p.id === id);
         const newQty = Math.max(1, item.qty + delta);
+        if (product && newQty > product.stock) {
+          alert("Máximo disponible alcanzado: " + product.stock);
+          return item;
+        }
         return {...item, qty: newQty};
       }
       return item;
@@ -247,9 +260,12 @@ export default function POSPage() {
       return;
     }
 
-    // 3. Update stock (simplified)
+    // 3. Update stock (safely with error check)
     for (const item of cart) {
-      await supabase.rpc('decrement_stock', { x: item.qty, row_id: item.id });
+      const { error: stockError } = await supabase.rpc('decrement_stock', { x: item.qty, row_id: item.id });
+      if (stockError) {
+        console.error("Error de stock en " + item.name + ":", stockError);
+      }
     }
 
     alert(`¡Venta completada!\nTotal: $${total.toFixed(2)}\nMétodo: ${paymentMethod}`);

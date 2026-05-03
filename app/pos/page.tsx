@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ShoppingCart, Trash2, CreditCard, Banknote } from "lucide-react";
+import Shell from "@/components/Shell";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function POSPage() {
   const [cart, setCart] = useState<{id: number, name: string, price: number, qty: number}[]>([]);
@@ -31,83 +33,99 @@ export default function POSPage() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', height: 'calc(100vh - 150px)' }}>
-      {/* Catalog */}
-      <div style={{ overflowY: 'auto', paddingRight: '1rem' }}>
-        <h2 className="neon-cyan" style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Catalog</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1.5rem' }}>
-          {products.map((p) => (
-            <div 
-              key={p.id} 
-              className="retro-card" 
-              style={{ cursor: 'pointer', textAlign: 'center', borderColor: 'var(--muted)' }}
-              onClick={() => addToCart(p)}
-            >
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>{p.icon}</div>
-              <p className="retro-text" style={{ fontSize: '0.6rem', marginBottom: '0.5rem' }}>{p.name}</p>
-              <p className="neon-yellow retro-text" style={{ fontSize: '0.7rem' }}>${p.price.toFixed(2)}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Cart */}
-      <div className="retro-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', borderColor: 'var(--primary)' }}>
-        <h3 className="neon-pink" style={{ fontSize: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ShoppingCart size={20} /> Current Order
-        </h3>
-        
-        <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem' }}>
-          {cart.length === 0 ? (
-            <div style={{ textAlign: 'center', marginTop: '3rem', color: 'var(--muted-foreground)' }}>
-              <p className="retro-text" style={{ fontSize: '0.5rem' }}>Cart is empty</p>
-              <p className="retro-text" style={{ fontSize: '0.4rem', marginTop: '1rem' }}>Awaiting input...</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {cart.map((item) => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#00000044', border: '2px solid var(--border)' }}>
-                  <div>
-                    <p className="retro-text" style={{ fontSize: '0.5rem' }}>{item.qty}x {item.name}</p>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--neon-yellow)' }}>${(item.price * item.qty).toFixed(2)}</p>
-                  </div>
-                  <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ borderTop: '4px solid var(--border)', paddingTop: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <span className="retro-text" style={{ fontSize: '0.8rem' }}>Total</span>
-            <span className="neon-yellow retro-text" style={{ fontSize: '1.2rem' }}>${total.toFixed(2)}</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-            <button className="retro-button" style={{ fontSize: '0.5rem' }}>
-              <Banknote size={14} /> Cash
-            </button>
-            <button className="retro-button" style={{ fontSize: '0.5rem' }}>
-              <CreditCard size={14} /> Card
-            </button>
-          </div>
+    <Shell>
+      <div className="grid grid-cols-12 gap-8 h-[calc(100vh-140px)]">
+        {/* Catálogo */}
+        <div className="col-span-12 lg:col-span-8 overflow-y-auto pr-4">
+          <header className="mb-8">
+            <h1 className="text-secondary-neon font-black text-3xl italic uppercase tracking-tighter">Menú de Ventas</h1>
+            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Selecciona productos para la orden</p>
+          </header>
           
-          <button 
-            className="retro-button primary" 
-            style={{ width: '100%', padding: '1rem' }}
-            disabled={cart.length === 0}
-            onClick={() => {
-              alert("Transaction Complete! Game Over.");
-              setCart([]);
-            }}
-          >
-            <span className="retro-text">Insert Coin</span>
-          </button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {products.map((p) => (
+              <motion.div 
+                key={p.id} 
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-black border-4 border-neutral-900 p-6 flex flex-col items-center cursor-pointer hover:border-primary-neon transition-colors arcade-shadow-cyan hover:arcade-shadow-pink"
+                onClick={() => addToCart(p)}
+              >
+                <div className="text-4xl mb-4">{p.icon}</div>
+                <p className="text-[10px] font-black uppercase text-center mb-2">{p.name}</p>
+                <p className="text-tertiary-neon font-bold">${p.price.toFixed(2)}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Carrito */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col h-full">
+          <div className="bg-black border-4 border-primary-neon p-6 flex flex-col h-full shadow-[8px_8px_0px_0px_rgba(255,0,127,0.2)]">
+            <h3 className="text-primary-neon font-black text-sm uppercase mb-6 flex items-center gap-3">
+              <ShoppingCart size={20} /> Orden Actual
+            </h3>
+            
+            <div className="flex-1 overflow-y-auto mb-6 space-y-3">
+              <AnimatePresence mode="popLayout">
+                {cart.length === 0 ? (
+                  <div className="text-center mt-12 text-neutral-600">
+                    <p className="text-[10px] uppercase font-bold tracking-widest">Carrito vacío</p>
+                    <p className="text-[8px] uppercase mt-2">Esperando selección...</p>
+                  </div>
+                ) : (
+                  cart.map((item) => (
+                    <motion.div 
+                      key={item.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="bg-neutral-900/50 border-2 border-neutral-800 p-3 flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="text-[10px] font-bold uppercase">{item.qty}x {item.name}</p>
+                        <p className="text-tertiary-neon text-xs font-bold">${(item.price * item.qty).toFixed(2)}</p>
+                      </div>
+                      <button onClick={() => removeFromCart(item.id)} className="text-primary-neon hover:scale-110 transition-transform">
+                        <Trash2 size={16} />
+                      </button>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="border-t-4 border-neutral-900 pt-6">
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-[10px] font-bold uppercase text-neutral-500">Total a Pagar</span>
+                <span className="text-secondary-neon font-black text-2xl italic">${total.toFixed(2)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button className="bg-neutral-900 border-2 border-neutral-800 p-3 text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:border-secondary-neon">
+                  <Banknote size={16} /> Efectivo
+                </button>
+                <button className="bg-neutral-900 border-2 border-neutral-800 p-3 text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:border-secondary-neon">
+                  <CreditCard size={16} /> Tarjeta
+                </button>
+              </div>
+              
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-cyan disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={cart.length === 0}
+                onClick={() => {
+                  alert("¡Venta completada! INSERT COIN");
+                  setCart([]);
+                }}
+              >
+                Completar Venta
+              </motion.button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }

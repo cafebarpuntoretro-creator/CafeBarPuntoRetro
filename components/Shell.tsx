@@ -101,7 +101,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarItem icon={ReceiptText} label="NUEVA VENTA" href="/pos" active={pathname === "/pos"} />
           <SidebarItem icon={BarChart} label="ESTADÍSTICAS" href="/stats" active={pathname === "/stats"} />
           <SidebarItem icon={History} label="HISTORIAL DE CIERRES" href="/cash-history" active={pathname === "/cash-history"} />
-          <SidebarItem icon={Settings} label="SISTEMA" href="#" active={false} />
+          <SidebarItem icon={Settings} label="SISTEMA" href="/settings" active={pathname === "/settings"} />
         </nav>
       </aside>
 

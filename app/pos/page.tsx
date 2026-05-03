@@ -40,12 +40,22 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<"Efectivo" | "Nequi" | "Daviplata" | "Tarjeta">("Efectivo");
   const [searchTerm, setSearchTerm] = useState("");
   
+  // Cash Session State
+  const [currentSession, setCurrentSession] = useState<any>(null);
+  const [showOpenDrawer, setShowOpenDrawer] = useState(false);
+  const [initialBase, setInitialBase] = useState(0);
+  const [showCloseDrawer, setShowCloseDrawer] = useState(false);
+
   // Barcode scanning state
   const scanBuffer = useRef("");
   const lastKeyTime = useRef(Date.now());
 
   useEffect(() => {
-    fetchProducts();
+    const init = async () => {
+      await fetchSession();
+      await fetchProducts();
+    };
+    init();
     
     // Global barcode listener
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,6 +81,36 @@ export default function POSPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [products]); // Re-bind when products change to have latest list
+
+  const fetchSession = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("cash_sessions")
+      .select("*")
+      .eq("status", "open")
+      .maybeSingle();
+    
+    if (data) {
+      setCurrentSession(data);
+    } else {
+      setShowOpenDrawer(true);
+    }
+  };
+
+  const handleOpenSession = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("cash_sessions")
+      .insert([{ initial_amount: initialBase, status: 'open' }])
+      .select()
+      .single();
+    
+    if (error) alert(error.message);
+    else {
+      setCurrentSession(data);
+      setShowOpenDrawer(false);
+    }
+  };
 
   const fetchProducts = async () => {
     if (!supabase) return;
@@ -117,14 +157,85 @@ export default function POSPage() {
   const total = subtotal - discountAmount + tip;
 
   const handleCompleteSale = async () => {
-    if (cart.length === 0 || !supabase) return;
+    if (cart.length === 0 || !supabase || !currentSession) return;
     
-    // In a real app, you'd save to 'sales' and 'sale_items' tables here
-    // And update product stock
+    // 1. Create Sale Record
+    const { data: sale, error: saleError } = await supabase
+      .from("sales")
+      .insert([{ 
+        total: total, 
+        payment_method: paymentMethod,
+        session_id: currentSession.id 
+      }])
+      .select()
+      .single();
+
+    if (saleError) {
+      alert("Error al registrar venta: " + saleError.message);
+      return;
+    }
+
+    // 2. Create Sale Items
+    const saleItems = cart.map(item => ({
+      sale_id: sale.id,
+      product_id: item.id,
+      quantity: item.qty,
+      price: item.price
+    }));
+
+    const { error: itemsError } = await supabase.from("sale_items").insert(saleItems);
+    
+    if (itemsError) {
+      alert("Error al registrar items: " + itemsError.message);
+      return;
+    }
+
+    // 3. Update stock (simplified)
+    for (const item of cart) {
+      await supabase.rpc('decrement_stock', { x: item.qty, row_id: item.id });
+    }
+
     alert(`¡Venta completada!\nTotal: $${total.toFixed(2)}\nMétodo: ${paymentMethod}`);
     setCart([]);
     setDiscount(0);
     setTip(0);
+    fetchProducts(); // Refresh stock in UI
+  };
+
+  const handleCloseSession = async (realAmount: number) => {
+    if (!supabase || !currentSession) return;
+    
+    // Calculate expected amount
+    const { data: sales, error: salesError } = await supabase
+      .from("sales")
+      .select("total")
+      .eq("session_id", currentSession.id);
+    
+    if (salesError) {
+      alert(salesError.message);
+      return;
+    }
+
+    const totalSales = sales.reduce((sum, s) => sum + Number(s.total), 0);
+    const expected = Number(currentSession.initial_amount) + totalSales;
+
+    const { error } = await supabase
+      .from("cash_sessions")
+      .update({
+        closed_at: new Date().toISOString(),
+        final_amount_expected: expected,
+        final_amount_real: realAmount,
+        status: 'closed'
+      })
+      .eq("id", currentSession.id);
+    
+    if (error) alert(error.message);
+    else {
+      alert(`Sesión Cerrada.\nEsperado: $${expected.toFixed(2)}\nReal: $${realAmount.toFixed(2)}\nDiferencia: $${(realAmount - expected).toFixed(2)}`);
+      setCurrentSession(null);
+      setShowCloseDrawer(false);
+      setShowOpenDrawer(true);
+    }
   };
 
   const filteredProducts = products.filter(p => 
@@ -134,15 +245,102 @@ export default function POSPage() {
 
   return (
     <Shell>
+      {/* Overlay: Abrir Caja */}
+      <AnimatePresence>
+        {showOpenDrawer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <div className="bg-black border-4 border-secondary-neon p-8 w-full max-w-md arcade-shadow-pink">
+              <h2 className="text-secondary-neon font-black text-2xl uppercase italic mb-6 tracking-tighter">Apertura de Caja</h2>
+              <p className="text-neutral-500 text-[10px] uppercase font-bold mb-8">Ingresa el monto base de efectivo para iniciar el día</p>
+              
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-secondary-neon">Monto Base (Efectivo)</label>
+                  <input 
+                    type="number" 
+                    value={initialBase}
+                    onChange={(e) => setInitialBase(parseFloat(e.target.value) || 0)}
+                    className="bg-neutral-900 border-2 border-neutral-800 p-4 text-2xl font-mono text-white outline-none focus:border-secondary-neon"
+                    autoFocus
+                  />
+                </div>
+                <button 
+                  onClick={handleOpenSession}
+                  className="w-full bg-secondary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-cyan"
+                >
+                  Abrir Turno [ENTER]
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Overlay: Cerrar Caja */}
+      <AnimatePresence>
+        {showCloseDrawer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <div className="bg-black border-4 border-primary-neon p-8 w-full max-w-md arcade-shadow-cyan">
+              <h2 className="text-primary-neon font-black text-2xl uppercase italic mb-6 tracking-tighter">Cierre de Caja</h2>
+              <p className="text-neutral-500 text-[10px] uppercase font-bold mb-8">Ingresa el total de efectivo real contado en caja</p>
+              
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase font-bold text-primary-neon">Efectivo Real en Caja</label>
+                  <input 
+                    type="number" 
+                    id="real-cash-input"
+                    className="bg-neutral-900 border-2 border-neutral-800 p-4 text-2xl font-mono text-white outline-none focus:border-primary-neon"
+                    autoFocus
+                  />
+                </div>
+                <button 
+                  onClick={() => {
+                    const val = (document.getElementById('real-cash-input') as HTMLInputElement).value;
+                    handleCloseSession(parseFloat(val) || 0);
+                  }}
+                  className="w-full bg-primary-neon text-black font-black p-4 uppercase text-sm arcade-shadow-pink"
+                >
+                  Finalizar Turno y Guardar
+                </button>
+                <button 
+                  onClick={() => setShowCloseDrawer(false)}
+                  className="w-full text-neutral-500 text-[10px] uppercase font-bold hover:text-white"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-12 gap-8 h-[calc(100vh-140px)]">
         {/* Catálogo */}
         <div className="col-span-12 lg:col-span-8 flex flex-col overflow-hidden">
           <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-secondary-neon font-black text-3xl italic uppercase tracking-tighter">Terminal de Ventas</h1>
-              <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                <Barcode size={12} /> Lector activo | Esperando escaneo...
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                  <Barcode size={12} /> Lector activo
+                </p>
+                <span className="text-neutral-800">|</span>
+                <button 
+                  onClick={() => setShowCloseDrawer(true)}
+                  className="text-[10px] font-black text-primary-neon uppercase hover:underline"
+                >
+                  Cerrar Caja [X]
+                </button>
+              </div>
             </div>
             
             <div className="relative">

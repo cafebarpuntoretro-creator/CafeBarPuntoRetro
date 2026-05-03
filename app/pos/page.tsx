@@ -13,7 +13,8 @@ import {
   Search,
   Loader2,
   Check,
-  Clock
+  Clock,
+  ReceiptText
 } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion, AnimatePresence } from "motion/react";

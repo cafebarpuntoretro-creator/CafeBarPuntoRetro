@@ -2,209 +2,296 @@
 
 import { useState, useEffect } from "react";
 import { 
+  BarChart as BarChartIcon, 
   TrendingUp, 
-  Clock, 
-  ShoppingBag, 
-  ArrowLeft, 
-  Calendar,
-  Filter,
+  TrendingDown, 
+  Calendar, 
+  DollarSign, 
+  Package, 
+  ArrowUpRight, 
+  ArrowDownRight,
   Loader2,
-  ChevronRight
+  PieChart as PieChartIcon
 } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion } from "motion/react";
 import { supabase } from "@/lib/supabase";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart, 
+  Line,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
 
-interface Sale {
-  id: string;
+interface SaleData {
+  day: string;
   total: number;
-  payment_method: string;
-  created_at: string;
-  sale_items: {
-    quantity: number;
-    price: number;
-    products: {
-      name: string;
-    } | { name: string }[] | null;
-  }[];
+}
+
+interface MonthlyData {
+  month: string;
+  total: number;
+}
+
+interface ProductStat {
+  name: string;
+  sales: number;
 }
 
 export default function StatsPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState({
-    totalAmount: 0,
-    totalSales: 0,
-    avgTicket: 0
-  });
+  const [monthlySales, setMonthlySales] = useState<SaleData[]>([]);
+  const [annualSales, setAnnualSales] = useState<MonthlyData[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductStat[]>([]);
+  const [bottomProducts, setBottomProducts] = useState<ProductStat[]>([]);
+  const [totals, setTotals] = useState({ month: 0, year: 0, orders: 0 });
 
   useEffect(() => {
-    fetchSales();
+    fetchStats();
   }, []);
 
-  const fetchSales = async () => {
+  const fetchStats = async () => {
     if (!supabase) return;
-    
-    // Fetch sales with items and product names
-    const { data, error } = await supabase
-      .from("sales")
-      .select(`
-        id,
-        total,
-        payment_method,
-        created_at,
-        sale_items (
-          quantity,
-          price,
-          products (
-            name
-          )
-        )
-      `)
-      .order("created_at", { ascending: false });
+    setLoading(true);
 
-    if (error) {
-      console.error(error);
-    } else {
-      setSales(data || []);
-      
-      const total = data?.reduce((sum, s) => sum + Number(s.total), 0) || 0;
-      setSummary({
-        totalAmount: total,
-        totalSales: data?.length || 0,
-        avgTicket: data?.length ? total / data.length : 0
+    const now = new Date();
+    const firstDayMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const firstDayYear = new Date(now.getFullYear(), 0, 1).toISOString();
+
+    // 1. Fetch sales for the current year
+    const { data: yearSales } = await supabase
+      .from("sales")
+      .select("total, created_at")
+      .gte("created_at", firstDayYear);
+
+    // 2. Fetch sale items for top/bottom products
+    const { data: items } = await supabase
+      .from("sale_items")
+      .select("quantity, products(name)")
+      .gte("created_at", firstDayMonth);
+
+    // PROCESS DATA
+    if (yearSales) {
+      // Annual Balance
+      const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      const annualMap = months.map(m => ({ month: m, total: 0 }));
+      let monthTotal = 0;
+      let yearTotal = 0;
+
+      yearSales.forEach(s => {
+        const d = new Date(s.created_at);
+        annualMap[d.getMonth()].total += Number(s.total);
+        yearTotal += Number(s.total);
+        if (d.getMonth() === now.getMonth()) monthTotal += Number(s.total);
       });
+      setAnnualSales(annualMap);
+      setTotals(prev => ({ ...prev, year: yearTotal, month: monthTotal, orders: yearSales.length }));
+
+      // Daily Sales for Current Month
+      const dailyMap: { [key: string]: number } = {};
+      yearSales.filter(s => new Date(s.created_at).getMonth() === now.getMonth()).forEach(s => {
+        const day = new Date(s.created_at).getDate().toString();
+        dailyMap[day] = (dailyMap[day] || 0) + Number(s.total);
+      });
+      const monthlyArray = Array.from({ length: now.getDate() }, (_, i) => ({
+        day: (i + 1).toString(),
+        total: dailyMap[i + 1] || 0
+      }));
+      setMonthlySales(monthlyArray);
     }
+
+    if (items) {
+      const prodMap: { [key: string]: number } = {};
+      items.forEach(i => {
+        const name = i.products?.name || "Desconocido";
+        prodMap[name] = (prodMap[name] || 0) + Number(i.quantity);
+      });
+      const sorted = Object.entries(prodMap)
+        .map(([name, sales]) => ({ name, sales }))
+        .sort((a, b) => b.sales - a.sales);
+      
+      setTopProducts(sorted.slice(0, 5));
+      setBottomProducts(sorted.slice(-5).reverse());
+    }
+
     setLoading(false);
   };
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-black border-2 border-primary-neon p-3 arcade-shadow-cyan">
+          <p className="text-[10px] font-black text-primary-neon uppercase mb-1">{label}</p>
+          <p className="text-white font-mono font-bold">${Number(payload[0].value).toLocaleString()}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (loading) {
+    return (
+      <Shell>
+        <div className="h-[80vh] flex flex-col items-center justify-center gap-4">
+          <Loader2 className="animate-spin text-primary-neon" size={48} />
+          <p className="text-secondary-neon font-black uppercase tracking-[0.3em] animate-pulse">Cargando Datos Financieros...</p>
+        </div>
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
       <header className="mb-8">
-        <h1 className="text-secondary-neon font-black text-3xl italic uppercase tracking-tighter">Historial de Ventas</h1>
-        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Reporte detallado de operaciones del sistema</p>
+        <h1 className="text-primary-neon font-black text-4xl italic uppercase tracking-tighter">Panel de Inteligencia</h1>
+        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-[0.2em]">Auditoría y Rendimiento {new Date().getFullYear()}</p>
       </header>
 
-      {/* Summary Cards */}
+      {/* Tarjetas de Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-pink">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-pink-500/10 p-3 rounded-xl"><DollarSign className="text-secondary-neon" size={24} /></div>
+            <span className="text-[10px] font-black text-secondary-neon uppercase flex items-center gap-1"><ArrowUpRight size={12} /> +12%</span>
+          </div>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Ventas del Mes</p>
+          <h2 className="text-3xl font-black text-white font-mono">${totals.month.toLocaleString()}</h2>
+        </motion.div>
+
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-cyan">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-cyan-500/10 p-3 rounded-xl"><Package className="text-primary-neon" size={24} /></div>
+            <span className="text-[10px] font-black text-primary-neon uppercase flex items-center gap-1"><TrendingUp size={12} /> OK</span>
+          </div>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Órdenes Totales (Año)</p>
+          <h2 className="text-3xl font-black text-white font-mono">{totals.orders}</h2>
+        </motion.div>
+
+        <motion.div whileHover={{ scale: 1.02 }} className="bg-neutral-900/50 border-2 border-neutral-800 p-6 arcade-shadow-pink">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-purple-500/10 p-3 rounded-xl"><TrendingUp className="text-purple-400" size={24} /></div>
+            <span className="text-[10px] font-black text-purple-400 uppercase flex items-center gap-1"><ArrowUpRight size={12} /> ESTABLE</span>
+          </div>
+          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Balance Anual</p>
+          <h2 className="text-3xl font-black text-white font-mono">${totals.year.toLocaleString()}</h2>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Gráfico Mensual */}
         <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-cyan">
-          <div className="flex justify-between items-start mb-4">
-            <TrendingUp className="text-secondary-neon" size={24} />
-            <span className="text-[8px] font-mono text-neutral-600 uppercase">Total_Vendido</span>
+          <h3 className="text-[10px] font-black uppercase text-primary-neon mb-6 flex items-center gap-2">
+            <Calendar size={14} /> Rendimiento Diario (Mes Actual)
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                <XAxis dataKey="day" stroke="#525252" fontSize={10} tickLine={false} />
+                <YAxis stroke="#525252" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#00FFFF" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#00FFFF', strokeWidth: 2 }}
+                  activeDot={{ r: 8, fill: '#FF007F' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <p className="text-3xl font-black text-white italic tracking-tighter">
-            ${summary.totalAmount.toLocaleString('es-CO', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        
-        <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-pink">
-          <div className="flex justify-between items-start mb-4">
-            <ShoppingBag className="text-primary-neon" size={24} />
-            <span className="text-[8px] font-mono text-neutral-600 uppercase">Ordenes_Hoy</span>
-          </div>
-          <p className="text-3xl font-black text-white italic tracking-tighter">
-            {summary.totalSales} <span className="text-xs text-neutral-500 font-bold tracking-widest uppercase">Tickets</span>
-          </p>
         </div>
 
-        <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-yellow">
-          <div className="flex justify-between items-start mb-4">
-            <Filter className="text-yellow-500" size={24} />
-            <span className="text-[8px] font-mono text-neutral-600 uppercase">Ticket_Promedio</span>
+        {/* Gráfico Anual */}
+        <div className="bg-black border-4 border-neutral-900 p-6 arcade-shadow-pink">
+          <h3 className="text-[10px] font-black uppercase text-secondary-neon mb-6 flex items-center gap-2">
+            <BarChartIcon size={14} /> Comparativa Mensual (Balance Anual)
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={annualSales}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <XAxis dataKey="month" stroke="#525252" fontSize={10} tickLine={false} />
+                <YAxis stroke="#525252" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                  {annualSales.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === new Date().getMonth() ? '#FF007F' : '#262626'} 
+                      className="hover:fill-primary-neon transition-colors"
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <p className="text-3xl font-black text-white italic tracking-tighter">
-            ${summary.avgTicket.toLocaleString('es-CO', { minimumFractionDigits: 2 })}
-          </p>
         </div>
       </div>
 
-      {/* Sales List */}
-      <div className="bg-black border-4 border-neutral-900 relative min-h-[400px]">
-        {loading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-10">
-            <Loader2 className="text-secondary-neon animate-spin mb-4" size={48} />
-          </div>
-        ) : null}
-
-        <div className="p-4 border-b-4 border-neutral-900 bg-neutral-900/20 flex justify-between items-center">
-          <span className="text-[10px] font-black uppercase text-secondary-neon tracking-widest">Registros Recientes</span>
-          <div className="flex gap-4">
-            <button className="text-[8px] font-black text-neutral-500 hover:text-white uppercase">Exportar CSV</button>
-            <button className="text-[8px] font-black text-neutral-500 hover:text-white uppercase">Filtrar Fecha</button>
-          </div>
-        </div>
-
-        <div className="overflow-y-auto max-h-[600px] custom-scrollbar">
-          {sales.length === 0 && !loading ? (
-            <div className="p-20 text-center text-neutral-700 uppercase font-mono text-[10px] tracking-[0.5em]">
-              Sin datos de ventas en el servidor
-            </div>
-          ) : (
-            <div className="divide-y-4 divide-neutral-900">
-              {sales.map((sale) => (
-                <div key={sale.id} className="p-6 hover:bg-neutral-900/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 bg-neutral-900 border-2 border-neutral-800 flex items-center justify-center text-secondary-neon">
-                      <Clock size={24} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-sm font-black text-white">VENTA #{sale.id.slice(0, 8).toUpperCase()}</span>
-                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-sm ${
-                          sale.payment_method === 'Efectivo' ? 'bg-green-900 text-green-400' :
-                          sale.payment_method === 'Tarjeta' ? 'bg-blue-900 text-blue-400' :
-                          'bg-purple-900 text-purple-400'
-                        }`}>
-                          {sale.payment_method.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {sale.sale_items?.map((item, idx) => {
-                          const productName = Array.isArray(item.products) 
-                            ? item.products[0]?.name 
-                            : item.products?.name;
-                          return (
-                            <span key={idx} className="text-[10px] text-neutral-500 font-bold">
-                              {item.quantity}x {productName}{idx < sale.sale_items.length - 1 ? ',' : ''}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-8 text-right">
-                    <div className="hidden md:block">
-                      <p className="text-[8px] font-mono text-neutral-600 uppercase">Fecha_Hora</p>
-                      <p className="text-[10px] font-bold text-white uppercase">
-                        {new Date(sale.created_at).toLocaleString('es-CO', { 
-                          day: '2-digit', 
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[8px] font-mono text-neutral-600 uppercase">Monto_Total</p>
-                      <p className="text-xl font-black text-secondary-neon italic">
-                        ${Number(sale.total).toLocaleString('es-CO')}
-                      </p>
-                    </div>
-                    <ChevronRight className="text-neutral-800" size={20} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Top Productos */}
+        <div className="bg-neutral-900/20 border-2 border-neutral-800 p-6">
+          <h3 className="text-[10px] font-black uppercase text-green-400 mb-6 flex items-center gap-2">
+            <TrendingUp size={14} /> Los más vendidos (Mes)
+          </h3>
+          <div className="space-y-4">
+            {topProducts.map((p, i) => (
+              <div key={p.name} className="flex items-center justify-between group">
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] font-black text-neutral-700">0{i+1}</span>
+                  <span className="text-[12px] font-black text-white uppercase group-hover:text-primary-neon transition-colors">{p.name}</span>
+                </div>
+                <div className="flex items-center gap-4 flex-1 mx-8">
+                  <div className="h-1 bg-neutral-900 flex-1 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(p.sales / topProducts[0].sales) * 100}%` }}
+                      className="h-full bg-primary-neon"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+                <span className="text-[10px] font-mono text-secondary-neon font-black">{p.sales} UDS</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-      
-      {/* Footer Info */}
-      <div className="mt-8 text-center">
-        <p className="text-[8px] font-mono text-neutral-700 uppercase tracking-widest">
-          Los datos mostrados corresponden a la actividad de los últimos 30 días
-        </p>
+
+        {/* Bottom Productos */}
+        <div className="bg-neutral-900/20 border-2 border-neutral-800 p-6">
+          <h3 className="text-[10px] font-black uppercase text-red-400 mb-6 flex items-center gap-2">
+            <TrendingDown size={14} /> Menos vendidos / Rotar (Mes)
+          </h3>
+          <div className="space-y-4">
+            {bottomProducts.map((p, i) => (
+              <div key={p.name} className="flex items-center justify-between group">
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] font-black text-neutral-700">0{i+1}</span>
+                  <span className="text-[12px] font-black text-white uppercase group-hover:text-red-400 transition-colors">{p.name}</span>
+                </div>
+                <div className="flex items-center gap-4 flex-1 mx-8">
+                  <div className="h-1 bg-neutral-900 flex-1 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(p.sales / topProducts[0].sales) * 100}%` }}
+                      className="h-full bg-red-900"
+                    />
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-red-400 font-black">{p.sales} UDS</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </Shell>
   );

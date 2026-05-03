@@ -21,6 +21,9 @@ import {
 import Shell from "@/components/Shell";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/lib/supabase";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { format } from "date-fns";
 
 interface Product {
   id: string;
@@ -349,6 +352,94 @@ export default function POSPage() {
     setShowCloseDrawer(true);
   };
 
+  const generatePDFReport = (session: any, closing: any, sales: any[]) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 1. Header (Membrete)
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    // Logo (Placeholder for the logo we added earlier)
+    doc.setTextColor(255, 0, 127); // Pink neon
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bolditalic");
+    doc.text("PUNTO RETRO", 15, 25);
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("CAFE BAR & POS SYSTEM", 15, 32);
+    
+    doc.text([
+      "NIT: 123.456.789-0",
+      "Calle 123 # 45 - 67",
+      "Tel: +57 300 000 0000",
+      "Instagram: @CafeBarPuntoRetro"
+    ], pageWidth - 15, 15, { align: "right" });
+
+    // 2. Report Title
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("REPORTE DE CIERRE DE CAJA (ARQUEO)", 15, 55);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, 15, 62);
+    doc.text(`ID Sesión: #${session.id.slice(0, 8)}`, 15, 67);
+
+    // 3. Financial Summary Table
+    autoTable(doc, {
+      startY: 75,
+      head: [['Concepto', 'Monto Esperado', 'Monto Real', 'Diferencia']],
+      body: [
+        ['Efectivo (Base + Ventas)', `$${closing.expectedCash.toLocaleString()}`, `$${closing.real.toLocaleString()}`, `$${(closing.real - closing.expectedCash).toLocaleString()}`],
+        ['Ventas Digitales', `$${closing.expectedElectronic.toLocaleString()}`, `$${closing.expectedElectronic.toLocaleString()}`, '$0'],
+        ['TOTAL GENERAL', `$${(closing.expectedCash + closing.expectedElectronic).toLocaleString()}`, `$${(closing.real + closing.expectedElectronic).toLocaleString()}`, `$${(closing.real - closing.expectedCash).toLocaleString()}`]
+      ],
+      theme: 'striped',
+      headStyles: { fillStyle: 'F', fillColor: [255, 0, 127] }
+    });
+
+    // 4. Detailed Sales Table
+    doc.text("DETALLE DE VENTAS DEL TURNO", 15, (doc as any).lastAutoTable.finalY + 15);
+    
+    const salesBody = sales.map((s, i) => [
+      i + 1,
+      format(new Date(s.created_at), 'HH:mm'),
+      s.payment_method,
+      `$${Number(s.total).toLocaleString()}`
+    ]);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['#', 'Hora', 'Método', 'Total']],
+      body: salesBody,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 255, 255], textColor: [0, 0, 0] }
+    });
+
+    // 5. Observations
+    if (closing.reason) {
+      doc.setFont("helvetica", "bold");
+      doc.text("OBSERVACIONES / MOTIVO DIFERENCIA:", 15, (doc as any).lastAutoTable.finalY + 15);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(closing.reason, 15, (doc as any).lastAutoTable.finalY + 22, { maxWidth: pageWidth - 30 });
+    }
+
+    // 6. Signatures
+    const finalY = (doc as any).lastAutoTable.finalY + 40;
+    doc.line(15, finalY, 80, finalY);
+    doc.text("Firma Operador", 15, finalY + 5);
+    
+    doc.line(pageWidth - 80, finalY, pageWidth - 15, finalY);
+    doc.text("Firma Administrador", pageWidth - 15, finalY + 5, { align: "right" });
+
+    doc.save(`Arqueo_${format(new Date(), 'yyyy-MM-dd_HHmm')}.pdf`);
+  };
+
   const handleCloseSession = async () => {
     if (!supabase || !currentSession) return;
     
@@ -358,6 +449,13 @@ export default function POSPage() {
       alert("Debes escribir un motivo para la diferencia de efectivo.");
       return;
     }
+
+    // Fetch ALL sales for the PDF before closing
+    const { data: allSales } = await supabase
+      .from("sales")
+      .select("*")
+      .eq("session_id", currentSession.id)
+      .order("created_at", { ascending: true });
 
     const { error } = await supabase
       .from("cash_sessions")
@@ -373,7 +471,10 @@ export default function POSPage() {
     
     if (error) alert(error.message);
     else {
-      alert("Arqueo guardado exitosamente. Caja cerrada.");
+      // GENERATE PDF AUTOMATICALLY
+      generatePDFReport(currentSession, closingData, allSales || []);
+      
+      alert("Arqueo guardado y reporte descargado exitosamente. Caja cerrada.");
       setCurrentSession(null);
       setShowCloseDrawer(false);
       setShowOpenDrawer(true);

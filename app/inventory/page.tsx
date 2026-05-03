@@ -87,7 +87,8 @@ export default function InventoryPage() {
       name: p.name,
       category: p.category,
       price: p.price,
-      stock: p.stock
+      stock: p.stock,
+      barcode: p.barcode || ""
     });
     setShowAddForm(true);
   };

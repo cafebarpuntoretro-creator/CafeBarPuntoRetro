@@ -33,7 +33,6 @@ ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public access (for demo purposes, restrict later)
-CREATE POLICY "Allow public read access on products" ON products FOR SELECT USING (true);
-CREATE POLICY "Allow public insert access on products" ON products FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public all on products" ON products FOR ALL USING (true);
 CREATE POLICY "Allow public all on sales" ON sales FOR ALL USING (true);
 CREATE POLICY "Allow public all on sale_items" ON sale_items FOR ALL USING (true);

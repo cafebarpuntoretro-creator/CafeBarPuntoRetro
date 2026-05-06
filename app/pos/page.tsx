@@ -701,8 +701,6 @@ export default function POSPage() {
               </div>
             )}
           </div>
-      )}
-          </div>
 
           {/* Mini Historial Reciente */}
           <div className="mt-8 border-t-4 border-neutral-900 pt-6">

@@ -58,6 +58,8 @@ export default function POSPage() {
   const lastKeyTime = useRef(Date.now());
 
   const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("TODOS");
+  const categories = ["TODOS", "Bebidas", "Licor", "Cerveza", "Comida", "Cigarrillos", "Cafetería", "Otros"];
 
   useEffect(() => {
     fetchSession();
@@ -481,10 +483,11 @@ export default function POSPage() {
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.barcode?.includes(searchTerm)
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.barcode?.includes(searchTerm);
+    const matchesCategory = selectedCategory === "TODOS" || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <Shell>
@@ -648,6 +651,23 @@ export default function POSPage() {
               />
             </div>
           </header>
+
+          {/* Filtros de Categoría */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 text-[8px] md:text-[10px] font-black uppercase transition-all whitespace-nowrap border-2 ${
+                  selectedCategory === cat 
+                    ? 'bg-secondary-neon text-black border-secondary-neon arcade-shadow-cyan' 
+                    : 'bg-black text-neutral-500 border-neutral-900 hover:border-neutral-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
           
           <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
             {loading ? (
@@ -655,7 +675,7 @@ export default function POSPage() {
                 <Loader2 className="animate-spin text-secondary-neon" size={48} />
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-20 md:pb-0">
                 {filteredProducts.map((p) => (
                   <motion.div 
                     key={p.id} 
@@ -665,15 +685,23 @@ export default function POSPage() {
                     onClick={() => addToCart(p)}
                   >
                     <div className="text-2xl mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                      {p.category === 'Bebidas' ? '🥤' : p.category === 'Comida' ? '🍔' : '📦'}
+                      {p.category === 'Bebidas' ? '🥤' : 
+                       p.category === 'Licor' ? '🥃' :
+                       p.category === 'Cerveza' ? '🍺' :
+                       p.category === 'Cigarrillos' ? '🚬' :
+                       p.category === 'Comida' ? '🍔' : '📦'}
                     </div>
-                    <p className="text-[9px] font-black uppercase text-center mb-1 leading-tight">{p.name}</p>
-                    <p className="text-tertiary-neon font-bold text-xs">${Number(p.price).toFixed(2)}</p>
-                    <div className="absolute top-1 right-1 text-[7px] text-neutral-600 font-mono">STOCK: {p.stock}</div>
+                    <p className="text-[9px] font-black uppercase text-center mb-1 leading-tight line-clamp-2 h-6">{p.name}</p>
+                    <p className="text-tertiary-neon font-bold text-xs">${Number(p.price).toFixed(0)}</p>
+                    <div className={`absolute top-1 right-1 text-[7px] font-mono font-black ${p.stock < 10 ? 'text-primary-neon' : 'text-neutral-700'}`}>
+                      {p.stock}
+                    </div>
                   </motion.div>
                 ))}
               </div>
             )}
+          </div>
+      )}
           </div>
 
           {/* Mini Historial Reciente */}

@@ -199,7 +199,10 @@ export default function InventoryPage() {
                     className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white"
                   >
                     <option>Bebidas</option>
+                    <option>Licor</option>
+                    <option>Cerveza</option>
                     <option>Comida</option>
+                    <option>Cigarrillos</option>
                     <option>Cafetería</option>
                     <option>Arcade</option>
                     <option>Merchandising</option>

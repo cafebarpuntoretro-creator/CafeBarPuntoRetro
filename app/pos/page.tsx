@@ -59,7 +59,7 @@ export default function POSPage() {
 
   const [recentSales, setRecentSales] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-  const categories = ["TODOS", "Bebidas", "Licor", "Cerveza", "Comida", "Cigarrillos", "Cafetería", "Otros"];
+  const categories = ["TODOS", "Cerveza", "Aguardiente", "Ron", "Whisky", "Vodka", "Aperitivos", "Bebidas sin alcohol", "Granizados", "Comida", "Otros"];
 
   useEffect(() => {
     fetchSession();
@@ -685,10 +685,12 @@ export default function POSPage() {
                     onClick={() => addToCart(p)}
                   >
                     <div className="text-2xl mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                      {p.category === 'Bebidas' ? '🥤' : 
-                       p.category === 'Licor' ? '🥃' :
-                       p.category === 'Cerveza' ? '🍺' :
-                       p.category === 'Cigarrillos' ? '🚬' :
+                      {p.category === 'Cerveza' ? '🍺' : 
+                       (p.category === 'Aguardiente' || p.category === 'Ron' || p.category === 'Whisky') ? '🥃' :
+                       p.category === 'Vodka' ? '🍸' :
+                       p.category === 'Aperitivos' ? '🍹' :
+                       p.category === 'Bebidas sin alcohol' ? '🥤' :
+                       p.category === 'Granizados' ? '🍧' :
                        p.category === 'Comida' ? '🍔' : '📦'}
                     </div>
                     <p className="text-[9px] font-black uppercase text-center mb-1 leading-tight line-clamp-2 h-6">{p.name}</p>

@@ -198,14 +198,16 @@ export default function InventoryPage() {
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                     className="bg-neutral-900 border-2 border-neutral-800 p-2 text-sm focus:border-secondary-neon outline-none text-white"
                   >
-                    <option>Bebidas</option>
-                    <option>Licor</option>
                     <option>Cerveza</option>
+                    <option>Aguardiente</option>
+                    <option>Ron</option>
+                    <option>Whisky</option>
+                    <option>Vodka</option>
+                    <option>Aperitivos</option>
+                    <option>Bebidas sin alcohol</option>
+                    <option>Granizados</option>
                     <option>Comida</option>
-                    <option>Cigarrillos</option>
-                    <option>Cafetería</option>
-                    <option>Arcade</option>
-                    <option>Merchandising</option>
+                    <option>Otros</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-2">

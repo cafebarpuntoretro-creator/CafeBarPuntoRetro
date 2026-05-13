@@ -202,6 +202,7 @@ export default function InventoryPage() {
                     <option>Aguardiente</option>
                     <option>Ron</option>
                     <option>Whisky</option>
+                    <option>Tequila</option>
                     <option>Vodka</option>
                     <option>Aperitivos</option>
                     <option>Bebidas sin alcohol</option>

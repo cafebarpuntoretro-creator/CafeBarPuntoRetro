@@ -59,7 +59,7 @@ export default function POSPage() {
 
   const [recentSales, setRecentSales] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
-  const categories = ["TODOS", "Cerveza", "Aguardiente", "Ron", "Whisky", "Vodka", "Aperitivos", "Bebidas sin alcohol", "Granizados", "Comida", "Otros"];
+  const categories = ["TODOS", "Cerveza", "Aguardiente", "Ron", "Whisky", "Tequila", "Vodka", "Aperitivos", "Bebidas sin alcohol", "Granizados", "Comida", "Otros"];
 
   useEffect(() => {
     fetchSession();
@@ -687,6 +687,7 @@ export default function POSPage() {
                     <div className="text-2xl mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
                       {p.category === 'Cerveza' ? '🍺' : 
                        (p.category === 'Aguardiente' || p.category === 'Ron' || p.category === 'Whisky') ? '🥃' :
+                       p.category === 'Tequila' ? '🌵' :
                        p.category === 'Vodka' ? '🍸' :
                        p.category === 'Aperitivos' ? '🍹' :
                        p.category === 'Bebidas sin alcohol' ? '🥤' :

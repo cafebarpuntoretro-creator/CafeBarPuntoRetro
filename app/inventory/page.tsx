@@ -25,7 +25,7 @@ export default function InventoryPage() {
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    category: "Bebidas",
+    category: "Cerveza",
     price: 0,
     stock: 0,
     barcode: ""
@@ -95,7 +95,7 @@ export default function InventoryPage() {
           detail: { title: 'Registrado', message: 'Nuevo producto añadido al sistema', type: 'info' }
         }));
         setShowAddForm(false);
-        setFormData({ name: "", category: "Bebidas", price: 0, stock: 0, barcode: "" });
+        setFormData({ name: "", category: "Cerveza", price: 0, stock: 0, barcode: "" });
         fetchProducts();
       }
     }

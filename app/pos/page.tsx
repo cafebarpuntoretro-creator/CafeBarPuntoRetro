@@ -485,7 +485,7 @@ export default function POSPage() {
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.barcode?.includes(searchTerm);
-    const matchesCategory = selectedCategory === "TODOS" || p.category === selectedCategory;
+    const matchesCategory = selectedCategory === "TODOS" || p.category?.trim().toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesCategory;
   });
 

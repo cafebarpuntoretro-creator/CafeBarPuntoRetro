@@ -58,6 +58,8 @@ export default function POSPage() {
   const lastKeyTime = useRef(Date.now());
 
   const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [showRecentSalesDrawer, setShowRecentSalesDrawer] = useState(false);
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState("TODOS");
   const categories = ["TODOS", "Cerveza", "Aguardiente", "Ron", "Whisky", "Tequila", "Vodka", "Aperitivos", "Bebidas sin alcohol", "Granizados", "Comida", "Otros"];
 
@@ -148,6 +150,17 @@ export default function POSPage() {
     window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [products]); 
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowRecentSalesDrawer(false);
+        setShowCloseDrawer(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   const fetchSession = async () => {
     if (!supabase) return;
@@ -620,6 +633,168 @@ export default function POSPage() {
         )}
       </AnimatePresence>
 
+      {/* Overlay: Últimas Ventas del Turno */}
+      <AnimatePresence>
+        {showRecentSalesDrawer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-6"
+          >
+            <div className="bg-black border-4 border-secondary-neon p-6 w-full max-w-5xl h-[85vh] flex flex-col arcade-shadow-pink">
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-neutral-900 pb-4 mb-4">
+                <h2 className="text-secondary-neon font-black text-2xl uppercase italic tracking-tighter flex items-center gap-3">
+                  <Clock size={28} /> Últimas Ventas del Turno
+                </h2>
+                <button 
+                  onClick={() => setShowRecentSalesDrawer(false)}
+                  className="text-neutral-500 hover:text-primary-neon text-[10px] uppercase font-black tracking-widest border-2 border-neutral-800 hover:border-primary-neon px-3 py-1 transition-colors"
+                >
+                  Cerrar [ESC]
+                </button>
+              </div>
+
+              {/* Split Content */}
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+                {/* Left: Sales List */}
+                <div className="lg:col-span-5 flex flex-col h-full overflow-hidden">
+                  <h3 className="text-[10px] font-black uppercase text-neutral-400 mb-3 tracking-wider">Historial de Ventas</h3>
+                  <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                    {recentSales.length === 0 ? (
+                      <p className="text-neutral-600 text-[10px] uppercase font-bold text-center mt-12">No hay ventas hoy</p>
+                    ) : (
+                      recentSales.map((sale) => (
+                        <div 
+                          key={sale.id} 
+                          onClick={() => setSelectedSaleDetail(sale)}
+                          className={`border-2 p-3 flex justify-between items-center cursor-pointer transition-all ${
+                            selectedSaleDetail?.id === sale.id 
+                              ? 'bg-neutral-900 border-secondary-neon' 
+                              : 'bg-neutral-900/30 border-neutral-800 hover:border-neutral-700'
+                          }`}
+                        >
+                          <div>
+                            <p className="text-[9px] font-black text-white uppercase">#{sale.id.slice(0, 8)}</p>
+                            <p className="text-[8px] text-neutral-500 font-bold mt-0.5">
+                              {format(new Date(sale.created_at), 'hh:mm:ss a')}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[8px] uppercase font-black bg-neutral-800 text-neutral-400 px-1 py-0.5 rounded">
+                                {sale.payment_method}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-secondary-neon font-black text-sm font-mono">${Number(sale.total).toFixed(0)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Detailed Description Panel */}
+                <div className="lg:col-span-7 flex flex-col h-full overflow-hidden border-t-2 lg:border-t-0 lg:border-l-2 border-neutral-900 lg:pl-6 pt-4 lg:pt-0">
+                  {selectedSaleDetail ? (
+                    <div className="flex flex-col h-full overflow-hidden">
+                      {/* Header info */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-white font-black text-sm uppercase">Detalle de Venta</h4>
+                            <p className="text-secondary-neon font-mono text-[9px] font-black uppercase mt-1">ID: {selectedSaleDetail.id}</p>
+                          </div>
+                          <span className="text-[10px] text-neutral-500 font-bold">
+                            {format(new Date(selectedSaleDetail.created_at), 'dd/MM/yyyy - hh:mm:ss a')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Items table */}
+                      <div className="flex-1 overflow-y-auto border border-neutral-800 p-3 bg-neutral-900/30 mb-4 custom-scrollbar">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="border-b border-neutral-800 text-[8px] font-black uppercase text-neutral-500">
+                              <th className="pb-2">Producto</th>
+                              <th className="pb-2 text-center">Cant</th>
+                              <th className="pb-2 text-right">Precio Unit.</th>
+                              <th className="pb-2 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-neutral-900 text-[9px] font-bold text-white">
+                            {selectedSaleDetail.sale_items?.map((item: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-neutral-900/50">
+                                <td className="py-2.5 uppercase max-w-[150px] truncate">{item.products?.name || "Producto Eliminado"}</td>
+                                <td className="py-2.5 text-center font-mono">{item.quantity}</td>
+                                <td className="py-2.5 text-right font-mono">${Number(item.price).toFixed(0)}</td>
+                                <td className="py-2.5 text-right font-mono text-tertiary-neon">${(Number(item.price) * item.quantity).toFixed(0)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Actions & Summary */}
+                      <div className="bg-neutral-900 p-4 border-l-4 border-primary-neon space-y-4">
+                        {/* Info Summary */}
+                        <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
+                          <span className="text-[9px] font-black uppercase text-neutral-400">Total Facturado</span>
+                          <span className="text-secondary-neon font-black text-xl font-mono">${Number(selectedSaleDetail.total).toFixed(0)}</span>
+                        </div>
+
+                        {/* Editable components: Payment Method */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[8px] uppercase font-black text-neutral-500">Editar Medio de Pago</label>
+                          <select 
+                            value={selectedSaleDetail.payment_method}
+                            onChange={(e) => {
+                              handleEditPayment(selectedSaleDetail.id, e.target.value);
+                              // Update selectedSaleDetail locally as well
+                              setSelectedSaleDetail({
+                                ...selectedSaleDetail,
+                                payment_method: e.target.value
+                              });
+                            }}
+                            className="bg-black border border-neutral-800 p-2 text-[10px] font-black uppercase text-secondary-neon outline-none focus:border-secondary-neon"
+                          >
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Nequi">Nequi</option>
+                            <option value="Daviplata">Daviplata</option>
+                            <option value="Tarjeta">Tarjeta</option>
+                          </select>
+                        </div>
+
+                        {/* Action Buttons: Delete */}
+                        <div className="pt-2">
+                          <button 
+                            onClick={async () => {
+                              await handleDeleteSale(selectedSaleDetail);
+                              setSelectedSaleDetail(null);
+                              setShowRecentSalesDrawer(false);
+                            }}
+                            className="w-full bg-primary-neon/20 hover:bg-primary-neon border border-primary-neon text-primary-neon hover:text-black font-black p-3 uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
+                          >
+                            <Trash2 size={12} /> Eliminar y Devolver a Stock
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-neutral-600">
+                      <Clock size={48} className="opacity-30 mb-3" />
+                      <p className="text-[10px] uppercase font-black tracking-wider">Detalle de Venta</p>
+                      <p className="text-[8px] uppercase mt-1">Selecciona una venta de la lista para ver su descripción</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 md:gap-8 h-auto lg:h-[calc(100vh-140px)]">
         {/* Catálogo */}
         <div className="order-2 lg:order-1 lg:col-span-8 flex flex-col overflow-hidden min-h-[50vh] lg:min-h-0">
@@ -636,6 +811,16 @@ export default function POSPage() {
                   className="text-[8px] md:text-[10px] font-black text-primary-neon uppercase hover:underline"
                 >
                   Cerrar Caja
+                </button>
+                <span className="text-neutral-800">|</span>
+                <button 
+                  onClick={() => {
+                    fetchRecentSales();
+                    setShowRecentSalesDrawer(true);
+                  }}
+                  className="text-[8px] md:text-[10px] font-black text-secondary-neon uppercase hover:underline flex items-center gap-1"
+                >
+                  <Clock size={10} /> Últimas Ventas
                 </button>
               </div>
             </div>
@@ -705,46 +890,7 @@ export default function POSPage() {
             )}
           </div>
 
-          {/* Mini Historial Reciente */}
-          <div className="mt-8 border-t-4 border-neutral-900 pt-6">
-            <h3 className="text-[10px] font-black uppercase text-neutral-500 mb-4 tracking-widest flex items-center gap-2">
-              <Clock size={12} /> Últimas Ventas del Turno
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recentSales.map((sale) => (
-                <div key={sale.id} className="bg-neutral-900/30 border border-neutral-800 p-3 flex justify-between items-center group relative">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-[9px] font-black text-white uppercase">#{sale.id.slice(0,5)}</p>
-                      <select 
-                        value={sale.payment_method}
-                        onChange={(e) => handleEditPayment(sale.id, e.target.value)}
-                        className="bg-transparent text-[8px] font-bold text-secondary-neon uppercase outline-none cursor-pointer border border-transparent hover:border-secondary-neon px-1"
-                      >
-                        <option value="Efectivo" className="bg-black">Efectivo</option>
-                        <option value="Nequi" className="bg-black">Nequi</option>
-                        <option value="Daviplata" className="bg-black">Daviplata</option>
-                        <option value="Tarjeta" className="bg-black">Tarjeta</option>
-                      </select>
-                    </div>
-                    <p className="text-[8px] text-neutral-600 font-bold max-w-[150px] truncate">
-                      {sale.sale_items?.map((i:any) => i.products?.name).join(', ')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-secondary-neon font-black text-xs">${Number(sale.total).toFixed(0)}</span>
-                    <button 
-                      onClick={() => handleDeleteSale(sale)}
-                      className="text-neutral-700 hover:text-primary-neon transition-colors opacity-0 group-hover:opacity-100"
-                      title="Eliminar Venta"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
 
         {/* Carrito / Checkout */}

@@ -11,7 +11,8 @@ import {
   History,
   X,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  PackagePlus
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -233,6 +234,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-col gap-1">
           <SidebarItem icon={LayoutDashboard} label="TABLERO" href="/" active={pathname === "/"} />
           <SidebarItem icon={Boxes} label="INVENTARIO" href="/inventory" active={pathname === "/inventory"} />
+          <SidebarItem icon={PackagePlus} label="COMPRAS" href="/purchases" active={pathname === "/purchases"} />
           <SidebarItem icon={ReceiptText} label="NUEVA VENTA" href="/pos" active={pathname === "/pos"} />
           <SidebarItem icon={BarChart} label="ESTADÍSTICAS" href="/stats" active={pathname === "/stats"} />
           <SidebarItem icon={History} label="HISTORIAL" href="/cash-history" active={pathname === "/cash-history"} />

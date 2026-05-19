@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Loader2, X, Check } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, X, Check, Search } from "lucide-react";
 import Shell from "@/components/Shell";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Form state
   const [formData, setFormData] = useState({
@@ -142,6 +143,18 @@ export default function InventoryPage() {
     }
   };
 
+  const filteredProducts = products.filter((p) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase().trim();
+    
+    const matchesName = p.name.toLowerCase().includes(term);
+    const matchesCategory = p.category.toLowerCase().includes(term);
+    const matchesStock = p.stock.toString().includes(term);
+    const matchesBarcode = p.barcode?.toLowerCase().includes(term) || false;
+    
+    return matchesName || matchesCategory || matchesStock || matchesBarcode;
+  });
+
   return (
     <Shell>
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -252,6 +265,26 @@ export default function InventoryPage() {
         )}
       </AnimatePresence>
 
+      {/* Buscador de Inventario */}
+      <div className="mb-6 relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+        <input 
+          type="text"
+          placeholder="BUSCAR POR NOMBRE, CATEGORÍA O CANTIDAD (STOCK)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-black border-4 border-neutral-900 focus:border-secondary-neon p-3 pl-12 text-[10px] md:text-xs font-black uppercase text-white outline-none arcade-shadow-cyan transition-all"
+        />
+        {searchTerm && (
+          <button 
+            onClick={() => setSearchTerm("")}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-primary-neon text-[9px] font-black uppercase tracking-widest"
+          >
+            Limpiar [X]
+          </button>
+        )}
+      </div>
+
       <div className="bg-black border-4 border-neutral-900 overflow-hidden relative min-h-[400px]">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
@@ -272,14 +305,14 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {products.length === 0 && !loading ? (
+              {filteredProducts.length === 0 && !loading ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-neutral-600 font-mono text-[10px] uppercase tracking-widest">
-                    Vaciado
+                    {searchTerm ? 'Ningún producto coincide con la búsqueda' : 'Vaciado'}
                   </td>
                 </tr>
               ) : (
-                products.map((p) => (
+                filteredProducts.map((p) => (
                   <tr key={p.id} className="border-b border-neutral-900 hover:bg-neutral-900/30 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
